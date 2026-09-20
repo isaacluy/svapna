@@ -1,16 +1,20 @@
-<%# Placeholder home page. M4 replaces this with the real reading UI. %>
-<div class="mx-auto max-w-2xl px-4 py-16">
-  <h1 class="text-3xl font-semibold tracking-tight">Svapna</h1>
-  <p class="mt-2 text-gray-600">
-    Signed in as <%= Current.session.user.email_address %>.
+<% content_for :title, "Svapna" %>
+
+<div class="mx-auto max-w-3xl px-5 py-16">
+  <h1 class="font-serif text-4xl font-medium tracking-tight">Svapna</h1>
+  <p class="mt-3 max-w-measure font-serif text-lg leading-relaxed text-ink-muted">
+    <%= pluralize(@entry_count, "entry") %><%= ", the earliest from #{@earliest.strftime('%B %Y')}" if @earliest %>.
   </p>
 
-  <p class="mt-8">
-    <%= link_to "Entries", entries_path, class: "underline" %>
-    ·
-    <%= link_to "Imports", imports_path, class: "underline" %>
-  </p>
+  <div class="mt-10 flex flex-wrap gap-3">
+    <%= link_to "Read entries", entries_path, class: "btn btn-primary" %>
+    <%= link_to "Import notes", new_import_path, class: "btn btn-quiet" %>
+  </div>
 
-  <%= button_to "Sign out", session_path, method: :delete,
-        class: "mt-8 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white" %>
+  <% if @recent.any? %>
+    <h2 class="mt-16 text-xs font-semibold tracking-wide text-ink-faint uppercase">Recent</h2>
+    <ul class="mt-1 divide-y divide-rule">
+      <%= render @recent %>
+    </ul>
+  <% end %>
 </div>
