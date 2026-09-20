@@ -2,7 +2,7 @@
 
 Private, password-protected journal. Entries are imported from Apple Notes, then searched, tagged, and analysed (word frequency etc.). Long-term the app should replace Apple Notes as the place entries get written.
 
-**Status:** M3 complete — scaffolding, Docker, auth, the `Entry` model with its Postgres search layer, and the Apple Notes importer. See the milestone table at the bottom.
+**Status:** M4 complete — scaffolding, Docker, auth, the `Entry` model with its Postgres search layer, the Apple Notes importer, and the design system. See the milestone table at the bottom.
 
 ## Stack
 
@@ -141,13 +141,18 @@ bin/d r import:undo IMPORT=3
 
 ## Design system
 
-Reading-first, mobile-first. Tokens once, never hard-coded hex in views.
+Reading-first, mobile-first. Everything lives in `app/assets/tailwind/application.css`; **never hard-code a colour in a view.**
 
-- **Newsreader** for entry text, **Inter** for UI. Self-hosted (no Google CDN), subset latin + latin-ext for Spanish accents, `font-display: swap`
-- Tokens in `app/assets/tailwind/application.css` under `@theme`
-- Light + dark via `prefers-color-scheme`
-- ~65ch measure, generous line-height, 44px touch targets, no hover-only interactions (Hotwire Native is coming)
-- Partials first; ViewComponent only when they carry real logic
+- **Fonts are self-hosted variable woff2** in `app/assets/fonts/` (fontsource 5.3.0): Newsreader for entry text, Inter for UI. No Google CDN — privacy, and it works offline in the container. One file per family covers every weight, and `unicode-range` means the latin-ext files are only fetched if a character needs them. Propshaft fingerprints them and production serves them `immutable` for a year
+- **Colours are plain custom properties on `:root`**, swapped in a `prefers-color-scheme: dark` block, then exposed to Tailwind through `@theme inline` (which emits `var()` rather than baking values in). Add a colour in one place: `:root`, the dark block, and the `@theme inline` map
+- **Semantic names, not palette names**: `paper`, `surface`, `surface-sunk`, `ink`, `ink-muted`, `ink-faint`, `rule`, `accent`, `marker` (the `important` tag), `danger`
+- **Component classes** in `@layer components` rather than repeating long utility chains: `.prose-entry`, `.btn`/`.btn-primary`/`.btn-quiet`/`.btn-danger`, `.field`, `.label`, `.tag`/`.tag-marker`, `.card`, `.link`
+- `.prose-entry` is the reading surface: Newsreader at 1.1875rem/1.75, capped by `max-w-measure` (~34rem, about 65 characters)
+- `.btn` and `.field` are `min-height: 2.75rem` — 44px touch targets, because Hotwire Native is coming. Nothing is hover-only
+- Partials first. `layouts/_header`, `layouts/_flash`, `layouts/_auth_panel`, `entries/_entry`. No ViewComponent until one carries real logic
+- Helpers: `nav_link_to` (marks the current section, sets `aria-current`), `entry_date`, `tag_pill`
+
+**Flash messages render only in `layouts/_flash`.** Views must not render their own — that was a real bug (each message appeared twice on the auth pages). `test/controllers/flash_rendering_test.rb` counts `[role=status]` nodes so a reintroduction fails; a `assert_select "div", /text/` assertion would not catch it.
 
 ## Conventions
 
@@ -173,8 +178,8 @@ Build **one milestone at a time**, then stop for review.
 | M1 | Auth: `generate authentication`, lock down, user rake task | **done** |
 | M2 | `Entry` model + the Postgres search migration + plain CRUD | **done** |
 | M3 | Importer: parser, committer, `Import` + undo, rake task + UI | **done** |
-| M4 | Design system + reading UI | next |
-| M5 | Search: query object, filters, `ts_headline`, results UI | |
+| M4 | Design system + reading UI | **done** |
+| M5 | Search: query object, filters, `ts_headline`, results UI | next |
 | M6 | Tags | |
 | M7 | Insights: word frequency, stopwords | |
 | M8 | Composer: authoring, autosave, drafts | |

@@ -1,20 +1,33 @@
-<div class="mx-auto max-w-2xl px-4 py-12">
-  <%= link_to "← All entries", entries_path, class: "text-sm underline" %>
+<% content_for :title, @entry.to_s %>
 
-  <h1 class="mt-6 text-2xl font-semibold tracking-tight"><%= @entry.to_s %></h1>
-  <p class="mt-1 text-sm text-gray-500">
-    <%= @entry.language %> · <%= @entry.status %><%= " · #{@entry.source}" if @entry.source.present? %>
-  </p>
+<article class="mx-auto max-w-3xl px-5 py-10">
+  <%= link_to "← Entries", entries_path, class: "text-sm text-ink-faint hover:text-ink" %>
 
-  <%# Plain text with paragraph breaks preserved -- no Markdown. %>
-  <div class="mt-8 max-w-[65ch] font-serif text-lg leading-relaxed">
+  <header class="mt-6">
+    <h1 class="font-serif text-3xl font-medium tracking-tight">
+      <%= entry_date(@entry) %>
+    </h1>
+
+    <div class="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
+      <% if @entry.draft? %><span class="tag">draft</span><% end %>
+      <% @entry.tags.each do |tag| %><%= tag_pill(tag) %><% end %>
+      <span><%= @entry.language %></span>
+      <% if @entry.source.present? %>
+        <span aria-hidden="true">·</span>
+        <span><%= @entry.source %></span>
+      <% end %>
+    </div>
+  </header>
+
+  <%# Plain text, paragraph breaks preserved. No Markdown. %>
+  <div class="prose-entry mt-9 max-w-measure">
     <%= simple_format @entry.body %>
   </div>
 
-  <div class="mt-10 flex gap-4 text-sm">
-    <%= link_to "Edit", edit_entry_path(@entry), class: "underline" %>
+  <footer class="mt-14 flex items-center gap-5 border-t border-rule pt-5 text-sm">
+    <%= link_to "Edit", edit_entry_path(@entry), class: "link" %>
     <%= button_to "Delete", @entry, method: :delete,
-          class: "text-red-700 underline",
-          form: { data: { turbo_confirm: "Delete this entry?" } } %>
-  </div>
-</div>
+          class: "btn btn-danger text-sm",
+          form: { data: { turbo_confirm: "Delete this entry? This cannot be undone." } } %>
+  </footer>
+</article>

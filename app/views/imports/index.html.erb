@@ -1,24 +1,37 @@
-<div class="mx-auto max-w-2xl px-4 py-12">
-  <div class="flex items-baseline justify-between">
-    <h1 class="text-2xl font-semibold tracking-tight">Imports</h1>
-    <%= link_to "New import", new_import_path, class: "text-sm underline" %>
+<% content_for :title, "Imports" %>
+
+<div class="mx-auto max-w-3xl px-5 py-10">
+  <div class="flex flex-wrap items-baseline justify-between gap-3">
+    <h1 class="font-serif text-3xl font-medium tracking-tight">Imports</h1>
+    <%= link_to "New import", new_import_path, class: "btn btn-primary" %>
   </div>
 
   <% if @imports.empty? %>
-    <p class="mt-8 text-gray-600">Nothing imported yet.</p>
+    <div class="card mt-10 px-6 py-12 text-center">
+      <p class="font-serif text-lg">Nothing imported yet.</p>
+      <p class="mt-2 text-sm text-ink-muted">
+        <%= link_to "Import your first note", new_import_path, class: "link" %>.
+      </p>
+    </div>
   <% else %>
-    <ul class="mt-8 divide-y divide-gray-200">
+    <ul class="mt-6 divide-y divide-rule">
       <% @imports.each do |import| %>
-        <li class="flex items-baseline justify-between py-4">
-          <div>
-            <%= link_to import.to_s, import, class: "font-medium underline" %>
-            <p class="mt-1 text-sm text-gray-600">
-              <%= pluralize(import.entries_count, "entry") %>
-              <% if import.duplicate_count.positive? %>· <%= import.duplicate_count %> duplicate<% end %>
-              <% if import.skipped_count.positive? %>· <span class="text-amber-700"><%= import.skipped_count %> skipped</span><% end %>
-            </p>
-          </div>
-          <span class="text-xs text-gray-500"><%= import.created_at.to_fs(:short) %></span>
+        <li>
+          <%= link_to import, class: "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-4 -mx-3 px-3 rounded-lg hover:bg-surface-sunk" do %>
+            <div>
+              <span class="font-medium"><%= import.source.presence || import.filename.presence || "Import ##{import.id}" %></span>
+              <p class="mt-1 text-sm text-ink-muted">
+                <%= pluralize(import.entries_count, "entry") %>
+                <% if import.duplicate_count.positive? %>
+                  · <%= import.duplicate_count %> duplicate
+                <% end %>
+                <% if import.skipped_count.positive? %>
+                  · <span class="text-marker"><%= import.skipped_count %> skipped</span>
+                <% end %>
+              </p>
+            </div>
+            <span class="text-xs text-ink-faint"><%= import.created_at.to_fs(:short) %></span>
+          <% end %>
         </li>
       <% end %>
     </ul>

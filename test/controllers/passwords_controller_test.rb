@@ -61,7 +61,11 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
+    # Counts the matches: `assert_select "div", /text/` passes whether a flash
+    # appears once or twice, which is how the duplicate-flash bug stayed green.
     def assert_notice(text)
-      assert_select "div", /#{text}/
+      matches = css_select("[role=status]").count { |node| node.text.include?(text) }
+
+      assert_equal 1, matches, "expected #{text.inspect} to appear exactly once, saw #{matches}"
     end
 end

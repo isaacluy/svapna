@@ -1,7 +1,7 @@
-<%= form_with model: entry, class: "space-y-4" do |f| %>
+<%= form_with model: entry, class: "space-y-6" do |f| %>
   <% if entry.errors.any? %>
-    <div class="rounded-md bg-red-50 p-4 text-sm text-red-800">
-      <ul class="list-disc pl-5">
+    <div class="rounded-lg bg-marker-soft px-4 py-3 text-sm text-danger">
+      <ul class="list-disc space-y-1 pl-4">
         <% entry.errors.full_messages.each do |message| %>
           <li><%= message %></li>
         <% end %>
@@ -10,33 +10,37 @@
   <% end %>
 
   <div>
-    <%= f.label :written_on, "Date", class: "block text-sm font-medium" %>
-    <%= f.date_field :written_on, class: "mt-1 rounded-md border-gray-300" %>
+    <%= f.label :body, "Entry", class: "label" %>
+    <%= f.text_area :body, rows: 18,
+          class: "field prose-entry !text-base",
+          placeholder: "Anoche soñé…" %>
   </div>
 
-  <div>
-    <%= f.label :body, class: "block text-sm font-medium" %>
-    <%= f.text_area :body, rows: 16,
-          class: "mt-1 block w-full rounded-md border-gray-300 font-serif" %>
-  </div>
-
-  <div class="flex flex-wrap gap-4">
+  <div class="grid gap-5 sm:grid-cols-2">
     <div>
-      <%= f.label :language, class: "block text-sm font-medium" %>
-      <%= f.select :language, Entry::LANGUAGES, {}, class: "mt-1 rounded-md border-gray-300" %>
+      <%= f.label :written_on, "Date", class: "label" %>
+      <%= f.date_field :written_on, class: "field" %>
     </div>
 
     <div>
-      <%= f.label :status, class: "block text-sm font-medium" %>
-      <%= f.select :status, Entry.statuses.keys, {}, class: "mt-1 rounded-md border-gray-300" %>
+      <%= f.label :status, class: "label" %>
+      <%= f.select :status, Entry.statuses.keys.map { |s| [ s.humanize, s ] }, {}, class: "field" %>
     </div>
 
     <div>
-      <%= f.label :source, "Source note", class: "block text-sm font-medium" %>
-      <%= f.text_field :source, placeholder: "Sueños p.14",
-            class: "mt-1 rounded-md border-gray-300" %>
+      <%= f.label :language, class: "label" %>
+      <%= f.select :language, Entry::LANGUAGES.map { |l| [ l.upcase, l ] }, {}, class: "field" %>
+    </div>
+
+    <div>
+      <%= f.label :source, "Source note", class: "label" %>
+      <%= f.text_field :source, placeholder: "Sueños p.14", class: "field" %>
     </div>
   </div>
 
-  <%= f.submit class: "rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white" %>
+  <div class="flex items-center gap-4 pt-1">
+    <%= f.submit entry.persisted? ? "Save" : "Create entry", class: "btn btn-primary" %>
+    <%= link_to "Cancel", entry.persisted? ? entry_path(entry) : entries_path,
+          class: "text-sm text-ink-faint hover:text-ink" %>
+  </div>
 <% end %>
