@@ -2,7 +2,7 @@
 
 Private, password-protected journal. Entries are imported from Apple Notes, then searched, tagged, and analysed (word frequency etc.). Long-term the app should replace Apple Notes as the place entries get written.
 
-**Status:** M2 complete — scaffolding, Docker, authentication, and the `Entry` model with its Postgres search layer. See the milestone table at the bottom.
+**Status:** M3 complete — scaffolding, Docker, auth, the `Entry` model with its Postgres search layer, and the Apple Notes importer. See the milestone table at the bottom.
 
 ## Stack
 
@@ -70,8 +70,8 @@ Config is environment variables only (`DATABASE_URL` in prod, `SECRET_KEY_BASE`,
   - Dedupe index on `(written_on, body_digest)` is **partial: `WHERE import_id IS NOT NULL`**. Idempotency is for imports; without the partial clause two new empty drafts on the same day collide
   - `body_digest` is set in a **`before_save`**, not `before_validation`, so a bulk import writing with `validate: false` still satisfies the NOT NULL constraint
   - `import_id` exists but has no foreign key and no association yet — M3 adds the `imports` table, the FK, and `belongs_to :import`
-- `Tag` + `Tagging`: many-to-many. **No `Category` model** — tags do that job. `important` is an ordinary tag
-- `Import`: one row per import run, so entries can be traced and undone
+- `Tag` + `Tagging`: many-to-many, names stored downcased so a plain unique index suffices (no `citext`). **No `Category` model** — tags do that job. `important` is an ordinary tag. Built in M3 because the importer must tag; M6 adds the browsing UI
+- `Import`: one row per import run, so entries can be traced and undone. The skipped-section column is **`parse_errors`, not `errors`** — `errors` collides with `ActiveModel::Errors` and raises `DangerousAttributeError`. Undo is `dependent: :destroy`, which also clears taggings; the tag vocabulary survives
 - `User` + `Session`: from the Rails generator
 
 **Two tsvectors, deliberately.** `search_vector` is stemmed and accent-folded for *matching*; `word_vector` is plain `simple` for *counting*, so word frequency reports `sueños`, not `suenos` or the stem `sueñ`.
@@ -105,7 +105,17 @@ Parser rules (`app/services/notes_import/parser.rb`, pure and unit-tested; `comm
 
 **Import + undo, not preview.** Each run creates an `Import`; the result page shows counts and parsed entries and offers Undo, which destroys that batch's entries. Simpler than a stateless preview round-trip and leaves a permanent record of provenance.
 
-Entry points: `bin/d r import:notes FILE=...` and an authenticated UI taking pasted text or multiple files. Import one note first and read the result before doing the rest.
+Entry points, both going through `NotesImport::Runner`:
+
+```bash
+bin/d r import:notes FILE='tmp/notes/*.txt'   # quote it -- Ruby globs, not the shell
+bin/d r import:list
+bin/d r import:undo IMPORT=3
+```
+
+…and the UI at `/imports/new`, taking pasted text or several files at once. Each file becomes its own `Import` so one bad file can be undone alone. Put files under `tmp/notes/` (gitignored, and visible inside the container). Import one note first and read the result before doing the rest.
+
+`NotesImport::Text.normalize` runs first on everything: Apple Notes emits CRLF and non-breaking spaces, and an NBSP beside a divider stops it matching, silently merging two entries into one.
 
 ## Search
 
@@ -162,8 +172,8 @@ Build **one milestone at a time**, then stop for review.
 | M0 | Bootstrap: Rails 8.1 in Docker, dev + prod images, `bin/d`, `structure.sql` | **done** |
 | M1 | Auth: `generate authentication`, lock down, user rake task | **done** |
 | M2 | `Entry` model + the Postgres search migration + plain CRUD | **done** |
-| M3 | Importer: parser, committer, `Import` + undo, rake task + UI | next |
-| M4 | Design system + reading UI | |
+| M3 | Importer: parser, committer, `Import` + undo, rake task + UI | **done** |
+| M4 | Design system + reading UI | next |
 | M5 | Search: query object, filters, `ts_headline`, results UI | |
 | M6 | Tags | |
 | M7 | Insights: word frequency, stopwords | |
