@@ -6,8 +6,7 @@ class Entry < ApplicationRecord
 
   enum :status, { draft: "draft", published: "published" }, validate: true
 
-  # import_id is populated by the importer in M3, which also adds the imports
-  # table, the foreign key and the association.
+  belongs_to :import, optional: true
 
   # before_save rather than before_validation: the importer may write with
   # validate: false, and body_digest is NOT NULL.
@@ -21,6 +20,7 @@ class Entry < ApplicationRecord
   # Newest first, with same-day entries in the order they appeared in the note.
   scope :chronological, -> { order(written_on: :desc, position: :asc, id: :asc) }
   scope :from_source, ->(source) { where(source: source) }
+  scope :imported, -> { where.not(import_id: nil) }
   scope :written_between, ->(from, to) { where(written_on: from..to) }
 
   # An entry has no title: it is identified by its date.

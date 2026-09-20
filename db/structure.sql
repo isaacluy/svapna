@@ -240,6 +240,42 @@ ALTER SEQUENCE public.entries_id_seq OWNED BY public.entries.id;
 
 
 --
+-- Name: imports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.imports (
+    id bigint NOT NULL,
+    source character varying,
+    filename character varying,
+    entries_count integer DEFAULT 0 NOT NULL,
+    duplicate_count integer DEFAULT 0 NOT NULL,
+    skipped_count integer DEFAULT 0 NOT NULL,
+    parse_errors jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: imports_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.imports_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: imports_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.imports_id_seq OWNED BY public.imports.id;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -321,6 +357,13 @@ ALTER TABLE ONLY public.entries ALTER COLUMN id SET DEFAULT nextval('public.entr
 
 
 --
+-- Name: imports id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imports ALTER COLUMN id SET DEFAULT nextval('public.imports_id_seq'::regclass);
+
+
+--
 -- Name: sessions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -348,6 +391,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 ALTER TABLE ONLY public.entries
     ADD CONSTRAINT entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: imports imports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.imports
+    ADD CONSTRAINT imports_pkey PRIMARY KEY (id);
 
 
 --
@@ -439,12 +490,21 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: entries fk_rails_f8a7316f9a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.entries
+    ADD CONSTRAINT fk_rails_f8a7316f9a FOREIGN KEY (import_id) REFERENCES public.imports(id) ON DELETE CASCADE;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260920182421'),
 ('20260920170757'),
 ('20260920170755'),
 ('20260920153423'),
