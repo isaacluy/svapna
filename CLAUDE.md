@@ -2,7 +2,7 @@
 
 Private, password-protected journal. Entries are imported from Apple Notes, then searched, tagged, and analysed (word frequency etc.). Long-term the app should replace Apple Notes as the place entries get written.
 
-**Status:** M4 complete — scaffolding, Docker, auth, the `Entry` model with its Postgres search layer, the Apple Notes importer, and the design system. See the milestone table at the bottom.
+**Status:** M5 complete — scaffolding, Docker, auth, the `Entry` model, the Apple Notes importer, the design system, and search. See the milestone table at the bottom.
 
 ## Stack
 
@@ -119,15 +119,23 @@ bin/d r import:undo IMPORT=3
 
 ## Search
 
-- `search_vector` is a STORED generated column: `setweight(body,'A') || setweight(source,'C')`, built with the entry's own language config. Generated columns can only reference their own row, so **tags and category are filters, not part of the vector**
-- Custom text search configs prepend the `unaccent` *dictionary* to the stemmer (`svapna_es`, `svapna_en`) — this is what makes "sueno" find "sueños". The bare `unaccent()` function is STABLE and unusable in an index; the dictionary route is how that's avoided
+`EntrySearch` (`app/queries/entry_search.rb`) is the one place search happens. **Browse and search are the same page**: `/entries` with an empty query simply lists everything, so there is one results UI and one set of filter state. The header search box posts there.
+
+- `search_vector` is a STORED generated column: `setweight(body,'A') || setweight(source,'C')`, built with the entry's own language config. Generated columns can only reference their own row, so **tags are filters, not part of the vector**
+- Custom text search configs prepend the `unaccent` *dictionary* to the stemmer (`svapna_es`, `svapna_en`) — that is what makes "sueno" find "sueños". The bare `unaccent()` function is STABLE and unusable in an index; the dictionary route is how that is avoided
 - `svapna_regconfig(text)` is a declared-IMMUTABLE CASE over **schema-qualified literal** config names, falling back to `simple`. A plain `language::regconfig` cast is STABLE and rejected in a generated column
-- Query with `websearch_to_tsquery` under each active config, OR'd (`||`) — recall beats precision here. Free Google-style syntax, and it never raises on malformed input
-- `ts_headline` **only on the current page** — it re-parses the original document and is slow
-- Default scope excludes drafts
-- Adding a language = one migration: a new config plus a `WHEN` branch in `svapna_regconfig`, and `Entry::LANGUAGES`. Postgres ships stemmers for es/en/pt/fr/it
-- **Stopwords vanish inside phrases.** `"con montañas"` reduces to `montañas` under the Spanish configuration, so a phrase search can match more than it looks like it should. Covered by a test so the behaviour is not mistaken for a bug
-- **Altering a text search config does not recompute existing generated columns.** Any such migration must drop and re-add the column expression and `REINDEX`
+- `Entry::SEARCH_CONFIGS` maps language => config and is the single source of truth. Adding a language = a migration (new config plus a `WHEN` branch in `svapna_regconfig`) and one line here
+- The query is parsed under **every** config and OR'd (`||`), so a Spanish query still finds an English entry. Recall beats precision; ranking sorts it out
+- `websearch_to_tsquery` gives `"quoted phrases"`, `or`, and `-exclusion` for free and **never raises on malformed input**
+- Filters compose onto the relation: tag, source note, date range (either end open), and status. **Drafts are excluded by default** — the list says how many are hidden and links to show them, so a draft never seems to have vanished
+- Ranking is `ts_rank_cd` then `written_on DESC`
+- Pagination is hand-rolled offset/limit, 20 per page. `page` is **clamped** to the real page count
+
+### Two things not to undo
+
+**All SQL templates are load-time constants** (`MATCH_SQL`, `RANK_SQL`, `HEADLINE_SQL`), built once from `SEARCH_CONFIGS`, with every piece of user input passed as a `?` bind. Interpolating a sanitised fragment at the call site also works, but Brakeman flags it as SQL injection and it is a bad pattern to keep around.
+
+**Highlighting escapes before it marks.** `ts_headline` runs **only over the current page** — the Postgres docs warn it re-parses the whole document and is slow — and is asked for private-use codepoint delimiters (`HIGHLIGHT_OPEN`/`CLOSE`), not `<mark>`. `SearchHelper#highlighted` HTML-escapes the snippet and *then* converts those markers to tags. Asking Postgres for literal `<mark>` would force sanitising instead, and Rails' `sanitize` strips a disallowed tag while keeping its text — so `<script>alert(1)</script>` in an entry would render as a bare `alert(1)`. (Postgres' parser happens to drop HTML tags from headlines anyway, so a full-stack test cannot prove the escaping; `SearchHelperTest` does it directly.)
 
 ## Text analytics
 
@@ -179,8 +187,8 @@ Build **one milestone at a time**, then stop for review.
 | M2 | `Entry` model + the Postgres search migration + plain CRUD | **done** |
 | M3 | Importer: parser, committer, `Import` + undo, rake task + UI | **done** |
 | M4 | Design system + reading UI | **done** |
-| M5 | Search: query object, filters, `ts_headline`, results UI | next |
-| M6 | Tags | |
+| M5 | Search: query object, filters, `ts_headline`, results UI | **done** |
+| M6 | Tags: browsing, filtering by tag, "did you mean?" | next |
 | M7 | Insights: word frequency, stopwords | |
 | M8 | Composer: authoring, autosave, drafts | |
 | M9 | Deploy to Coolify (can be pulled forward any time) | |
