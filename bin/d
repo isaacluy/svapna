@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Every command in this project runs in Docker. Nothing is installed on the host.
+#
+# Not `set -u`: macOS ships bash 3.2, where "$@" with zero args trips nounset.
+set -eo pipefail
+
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+dc()  { docker compose "$@"; }
+# `run --rm` honours depends_on: service_healthy, so these work from a cold stack.
+run() { dc run --rm web "$@"; }
+# Prefer exec when the stack is already up: attaches to the loaded app instead
+# of paying a fresh boot.
+in_web() {
+  if [ -n "$(dc ps -q web 2>/dev/null)" ]; then dc exec web "$@"; else run "$@"; fi
+}
+
+cmd="${1:-help}"; [ $# -gt 0 ] && shift
+
+case "$cmd" in
+  # --- stack ---
+  up)          dc up "$@" ;;
+  upd)         dc up -d "$@" ;;
+  down)        dc down "$@" ;;
+  nuke)        dc down -v --remove-orphans ;;   # also drops the bundle and pgdata volumes
+  build)       dc build "$@" ;;
+  ps)          dc ps ;;
+  logs)        dc logs -f "${@:-web}" ;;
+  restart)     dc restart "${@:-web}" ;;
+  attach)      dc attach web ;;                 # for `debug` breakpoints under `up`
+
+  # --- rails ---
+  c|console)   in_web bin/rails console "$@" ;;
+  sh|bash)     in_web bash ;;
+  r|rails)     run bin/rails "$@" ;;
+  g)           run bin/rails generate "$@" ;;
+  routes)      run bin/rails routes "$@" ;;
+  migrate)     run bin/rails db:migrate ;;
+  prepare)     run bin/rails db:prepare ;;
+  seed)        run bin/rails db:seed ;;
+  reset)       run bin/rails db:drop db:create db:migrate db:seed ;;
+  t|test)      run bin/rails test "$@" ;;
+  lint)        run bin/rubocop "$@" ;;
+  lintf)       run bin/rubocop -a "$@" ;;
+  sec)         run bin/brakeman --no-pager ;;
+
+  # --- gems ---
+  b|bundle)    run bundle "$@" ;;
+  # Restart failure is tolerated (stack may be down); `bundle add` failure is not.
+  add)         run bundle add "$@" && { dc restart web >/dev/null 2>&1 || true; } ;;
+  lock)        run bundle lock --add-platform x86_64-linux aarch64-linux ;;
+
+  # --- database ---
+  psql)        dc exec db psql -U postgres "${1:-svapna_development}" ;;
+
+  # --- production image ---
+  prod)        dc -f docker-compose.prod.yml "$@" ;;
+
+  help|*)
+    cat <<'USAGE'
+bin/d - run everything through Docker
+
+  up [-d]        start the stack (web + db) at http://localhost:3000
+  down / nuke    stop / stop and delete volumes (bundle + pgdata)
+  build          rebuild Dockerfile.dev (only needed for new OS packages)
+  logs [svc]     follow logs            restart [svc]  restart a service
+  ps             list services          attach         attach to web (debug breakpoints)
+
+  c              rails console          sh             bash shell
+  r <args>       bin/rails <args>       g <args>       bin/rails generate <args>
+  migrate | prepare | seed | reset | routes
+  t [args]       bin/rails test
+  lint | lintf | sec
+
+  b <args>       bundle <args>          add <gem>      bundle add + restart
+  lock           re-lock for x86_64-linux and aarch64-linux
+
+  psql [db]      psql into the db container
+  prod <args>    docker compose -f docker-compose.prod.yml <args>
+USAGE
+    ;;
+esac

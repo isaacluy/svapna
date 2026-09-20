@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1
+# Development image.
+#
+# Deliberately contains no application code and no gems: the source is
+# bind-mounted and gems live in a named volume, installed at container start by
+# bin/docker-dev-entrypoint. That means `bundle add <gem>` needs a restart, not
+# a rebuild. Rebuild this image only when you need a new OS package.
+
+# Must match .ruby-version and the production Dockerfile.
+ARG RUBY_VERSION=3.4.10
+FROM docker.io/library/ruby:${RUBY_VERSION}-slim
+
+ENV LANG=C.UTF-8 \
+    BUNDLE_PATH=/usr/local/bundle \
+    BUNDLE_APP_CONFIG=/usr/local/bundle \
+    RAILS_ENV=development \
+    EDITOR=vi
+
+# postgresql-client is not optional: with schema_format = :sql, Rails shells out
+# to psql/pg_dump for db/structure.sql. Debian trixie ships client 17, which is
+# why docker-compose.yml pins the server to postgres:17 -- a client older than
+# the server fails with "pg_dump: server version mismatch; aborting".
+RUN set -eux; \
+    apt-get update -qq; \
+    apt-get install -y --no-install-recommends \
+      build-essential \
+      ca-certificates \
+      curl \
+      git \
+      less \
+      libpq-dev \
+      libyaml-dev \
+      pkg-config \
+      postgresql-client; \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives
+
+# Same path as the production image so stack traces and binstubs line up.
+WORKDIR /rails
+
+CMD ["bin/dev"]

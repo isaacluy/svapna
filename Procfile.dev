@@ -1,0 +1,4 @@
+web: bin/rails server -b 0.0.0.0 -p 3000
+# If CSS changes stop appearing, inotify is not crossing the macOS bind mount.
+# Switch to: bin/rails tailwindcss:watch[poll]
+css: bin/rails tailwindcss:watch
