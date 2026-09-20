@@ -1,0 +1,57 @@
+name: svapna
+
+services:
+  db:
+    # Pinned to 17 to match the postgresql-client in Dockerfile.dev (Debian
+    # trixie ships 17). structure.sql is pg_dump output loaded by psql, so a
+    # client/server major mismatch breaks db:prepare.
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: svapna_development
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # Bound to loopback only -- not reachable from the network.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d svapna_development"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    init: true
+    entrypoint: ["/rails/bin/docker-dev-entrypoint"]
+    command: ["bin/dev"]
+    environment:
+      RAILS_ENV: development
+      # Deliberately NOT DATABASE_URL. It overrides config for whichever
+      # environment is loading, so `RAILS_ENV=test bin/rails test` would connect
+      # to and truncate svapna_development.
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      # Rails binds to localhost by default, which is unreachable through a
+      # published port.
+      BINDING: "0.0.0.0"
+    volumes:
+      - .:/rails
+      - bundle:/usr/local/bundle
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
+volumes:
+  pgdata:
+  bundle:
