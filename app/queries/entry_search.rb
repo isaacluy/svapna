@@ -91,6 +91,19 @@ class EntrySearch
                        .count
   end
 
+  # Alternative spellings to offer when a search finds nothing.
+  #
+  # Only for a single-word query: correcting one word of a phrase would mean
+  # guessing which word was wrong, and a wrong guess is worse than no guess.
+  # Accent and stemming differences are already handled by the search itself,
+  # so anything reaching here is a genuine misspelling.
+  def suggestions
+    return [] unless searching? && total.zero?
+    return [] unless query.match?(/\A[[:alnum:]]+\z/)
+
+    @suggestions ||= Vocabulary.similar_to(query)
+  end
+
   # Drafts excluded by the current filter. Surfaced in the UI so a draft never
   # just seems to have vanished.
   def hidden_draft_count
