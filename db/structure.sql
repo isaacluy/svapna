@@ -200,6 +200,46 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.entries (
+    id bigint NOT NULL,
+    body text NOT NULL,
+    written_on date NOT NULL,
+    "position" integer DEFAULT 0 NOT NULL,
+    language character varying DEFAULT 'es'::character varying NOT NULL,
+    status character varying DEFAULT 'published'::character varying NOT NULL,
+    source character varying,
+    body_digest character varying NOT NULL,
+    import_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    search_vector tsvector GENERATED ALWAYS AS ((setweight(to_tsvector(public.svapna_regconfig((language)::text), COALESCE(body, ''::text)), 'A'::"char") || setweight(to_tsvector(public.svapna_regconfig((language)::text), (COALESCE(source, ''::character varying))::text), 'C'::"char"))) STORED,
+    word_vector tsvector GENERATED ALWAYS AS (to_tsvector('simple'::regconfig, COALESCE(body, ''::text))) STORED
+);
+
+
+--
+-- Name: entries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.entries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: entries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.entries_id_seq OWNED BY public.entries.id;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -274,6 +314,13 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
+-- Name: entries id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.entries ALTER COLUMN id SET DEFAULT nextval('public.entries_id_seq'::regclass);
+
+
+--
 -- Name: sessions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -293,6 +340,14 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: entries entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.entries
+    ADD CONSTRAINT entries_pkey PRIMARY KEY (id);
 
 
 --
@@ -317,6 +372,48 @@ ALTER TABLE ONLY public.sessions
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: index_entries_on_import_dedupe; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_entries_on_import_dedupe ON public.entries USING btree (written_on, body_digest) WHERE (import_id IS NOT NULL);
+
+
+--
+-- Name: index_entries_on_import_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_import_id ON public.entries USING btree (import_id);
+
+
+--
+-- Name: index_entries_on_search_vector; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_search_vector ON public.entries USING gin (search_vector);
+
+
+--
+-- Name: index_entries_on_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_source ON public.entries USING btree (source);
+
+
+--
+-- Name: index_entries_on_status_and_written_on; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_status_and_written_on ON public.entries USING btree (status, written_on DESC);
+
+
+--
+-- Name: index_entries_on_word_vector; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_word_vector ON public.entries USING gin (word_vector);
 
 
 --
@@ -348,6 +445,7 @@ ALTER TABLE ONLY public.sessions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260920170757'),
 ('20260920170755'),
 ('20260920153423'),
 ('20260920153422');
