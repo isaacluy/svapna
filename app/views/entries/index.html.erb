@@ -1,4 +1,4 @@
-<% content_for :title, "Entries" %>
+<% content_for :title, @search.searching? ? "Search: #{@search.query}" : "Entries" %>
 
 <div class="mx-auto max-w-3xl px-5 py-10">
   <div class="flex flex-wrap items-baseline justify-between gap-3">
@@ -10,24 +10,42 @@
     </div>
   </div>
 
-  <p class="mt-2 text-sm text-ink-faint">
-    <%= pluralize(@total, "entry") %>
-    <% if @total > EntriesController::PAGE_SIZE %>
-      · showing the most recent <%= EntriesController::PAGE_SIZE %>
+  <div class="mt-6"><%= render "search_form", search: @search %></div>
+
+  <p class="mt-5 text-sm text-ink-faint">
+    <%= search_summary(@search) %>
+    <% if @search.any_criteria? %>
+      · <%= link_to "Clear", entries_path, class: "link" %>
+    <% end %>
+    <% if @search.hidden_draft_count.positive? %>
+      · <%= pluralize(@search.hidden_draft_count, "draft") %> hidden
+      · <%= link_to "show", search_path_with(@search, status: "all"), class: "link" %>
     <% end %>
   </p>
 
-  <% if @entries.empty? %>
-    <div class="card mt-10 px-6 py-12 text-center">
-      <p class="font-serif text-lg">Nothing here yet.</p>
-      <p class="mt-2 text-sm text-ink-muted">
-        <%= link_to "Import your notes", new_import_path, class: "link" %>
-        or <%= link_to "write an entry", new_entry_path, class: "link" %>.
-      </p>
+  <% if @search.entries.empty? %>
+    <div class="card mt-8 px-6 py-12 text-center">
+      <% if @search.any_criteria? %>
+        <p class="font-serif text-lg">No entries match.</p>
+        <p class="mt-2 text-sm text-ink-muted">
+          Try fewer words, or <%= link_to "clear the filters", entries_path, class: "link" %>.
+          Quotes search a phrase, <code class="text-xs">or</code> widens, and a leading
+          <code class="text-xs">-</code> excludes a word.
+        </p>
+      <% else %>
+        <p class="font-serif text-lg">Nothing here yet.</p>
+        <p class="mt-2 text-sm text-ink-muted">
+          <%= link_to "Import your notes", new_import_path, class: "link" %>
+          or <%= link_to "write an entry", new_entry_path, class: "link" %>.
+        </p>
+      <% end %>
     </div>
   <% else %>
-    <ul class="mt-6 divide-y divide-rule">
-      <%= render @entries %>
+    <ul class="mt-4 divide-y divide-rule">
+      <%= render partial: "result", collection: @search.entries, as: :result,
+                 locals: { highlights: @search.highlights } %>
     </ul>
+
+    <%= render "pagination", search: @search %>
   <% end %>
 </div>
