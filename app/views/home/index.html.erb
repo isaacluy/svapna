@@ -7,6 +7,8 @@
 
   <p class="mt-8">
     <%= link_to "Entries", entries_path, class: "underline" %>
+    ·
+    <%= link_to "Imports", imports_path, class: "underline" %>
   </p>
 
   <%= button_to "Sign out", session_path, method: :delete,

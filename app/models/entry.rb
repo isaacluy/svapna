@@ -6,8 +6,10 @@ class Entry < ApplicationRecord
 
   enum :status, { draft: "draft", published: "published" }, validate: true
 
-  # import_id is populated by the importer in M3, which also adds the imports
-  # table, the foreign key and the association.
+  belongs_to :import, optional: true
+
+  has_many :taggings, dependent: :destroy
+  has_many :tags, through: :taggings
 
   # before_save rather than before_validation: the importer may write with
   # validate: false, and body_digest is NOT NULL.
@@ -21,6 +23,8 @@ class Entry < ApplicationRecord
   # Newest first, with same-day entries in the order they appeared in the note.
   scope :chronological, -> { order(written_on: :desc, position: :asc, id: :asc) }
   scope :from_source, ->(source) { where(source: source) }
+  scope :tagged_with, ->(name) { joins(:tags).where(tags: { name: Tag.normalize(name) }) }
+  scope :imported, -> { where.not(import_id: nil) }
   scope :written_between, ->(from, to) { where(written_on: from..to) }
 
   # An entry has no title: it is identified by its date.
@@ -36,6 +40,14 @@ class Entry < ApplicationRecord
   # formatting is still recognised as the same entry.
   def self.digest_for(body)
     Digest::SHA256.hexdigest(body.to_s.gsub(/\s+/, " ").strip.downcase)
+  end
+
+  def tag!(name)
+    tags << Tag.find_or_create_by_name!(name) unless tagged_with?(name)
+  end
+
+  def tagged_with?(name)
+    tags.any? { |tag| tag.name == Tag.normalize(name) }
   end
 
   private

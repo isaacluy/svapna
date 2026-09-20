@@ -93,8 +93,10 @@ class EntrySearchVectorTest < ActiveSupport::TestCase
   test "the dedupe index blocks a repeated import but allows repeated drafts" do
     attrs = { body: "Mismo texto", written_on: Date.new(2026, 1, 1), language: "es" }
 
-    Entry.create!(**attrs, import_id: 1)
-    assert_raises(ActiveRecord::RecordNotUnique) { Entry.create!(**attrs, import_id: 2) }
+    Entry.create!(**attrs, import: Import.create!(source: "A"))
+    assert_raises(ActiveRecord::RecordNotUnique) do
+      Entry.create!(**attrs, import: Import.create!(source: "B"))
+    end
 
     # No import_id: outside the partial index, so duplicates are fine.
     Entry.create!(**attrs)
