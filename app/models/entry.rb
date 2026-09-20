@@ -1,8 +1,14 @@
 class Entry < ApplicationRecord
-  # Languages with a text search configuration in svapna_regconfig. Anything
-  # else still saves -- Postgres falls back to 'simple' -- but loses stemming,
-  # so keep this in step with the migration that defines the configurations.
-  LANGUAGES = %w[es en].freeze
+  # Language => the Postgres text search configuration that stems it.
+  # Must stay in step with svapna_regconfig (see the EnableSearchExtensions
+  # migration); anything not listed here still saves, but Postgres falls back
+  # to 'simple' and it loses stemming.
+  SEARCH_CONFIGS = {
+    "es" => "public.svapna_es",
+    "en" => "public.svapna_en"
+  }.freeze
+
+  LANGUAGES = SEARCH_CONFIGS.keys.freeze
 
   enum :status, { draft: "draft", published: "published" }, validate: true
 
