@@ -1,0 +1,10 @@
+# Words that mark an entry as important during import. Matched whole-word,
+# case-insensitively, with accents stripped first -- so "Importante" and
+# "IMPORTANTE" both count.
+#
+# Longest first: the regex alternates left to right, and this keeps the
+# intent obvious even though \b makes the order harmless.
+important:
+  - importantes
+  - importante
+  - important
