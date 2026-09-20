@@ -1,0 +1,22 @@
+<%# One row in a list of entries. Whole row is the target, for touch. %>
+<li>
+  <%= link_to entry_path(entry), class: "block py-5 -mx-3 px-3 rounded-lg hover:bg-surface-sunk" do %>
+    <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+      <span class="font-serif text-lg font-medium"><%= entry_date(entry) %></span>
+
+      <% if entry.draft? %>
+        <span class="tag">draft</span>
+      <% end %>
+      <% entry.tags.each do |tag| %>
+        <%= tag_pill(tag) %>
+      <% end %>
+      <% if entry.source.present? %>
+        <span class="ml-auto text-xs text-ink-faint"><%= entry.source %></span>
+      <% end %>
+    </div>
+
+    <p class="mt-1.5 font-serif text-[0.9375rem] leading-relaxed text-ink-muted">
+      <%= entry.excerpt %>
+    </p>
+  <% end %>
+</li>
