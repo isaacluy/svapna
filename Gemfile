@@ -20,7 +20,7 @@ gem "tailwindcss-rails"
 # gem "redis", ">= 4.0.1"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
-# gem "bcrypt", "~> 3.1.7"
+gem "bcrypt", "~> 3.1.7"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
@@ -55,3 +55,10 @@ group :test do
   gem "capybara"
   gem "selenium-webdriver"
 end
+
+# Pinned to the 2.x line: json 3.0 made JSON.parse accept a single positional
+# argument, but ActiveSupport 8.1.3.1 still calls `JSON.parse(json, options)`
+# with the options Hash positionally. Under json 3.x that raises ArgumentError
+# inside signed-cookie deserialisation, which breaks authentication entirely.
+# Revisit when Rails ships a release that handles json 3.
+gem "json", "~> 2.7"
