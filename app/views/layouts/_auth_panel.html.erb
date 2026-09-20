@@ -1,0 +1,15 @@
+<%# Centred panel shared by sign-in and the password screens.
+    Flash messages come from layouts/_flash -- these views must not render
+    their own, or every message appears twice. %>
+<div class="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-5 py-16">
+  <div class="mb-10 text-center">
+    <p class="font-serif text-2xl font-medium tracking-tight">Svapna</p>
+  </div>
+
+  <h1 class="font-serif text-2xl font-medium tracking-tight"><%= title %></h1>
+  <% if local_assigns[:subtitle].present? %>
+    <p class="mt-2 text-sm text-ink-muted"><%= subtitle %></p>
+  <% end %>
+
+  <div class="mt-7"><%= yield %></div>
+</div>
