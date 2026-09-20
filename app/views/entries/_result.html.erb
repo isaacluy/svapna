@@ -6,7 +6,7 @@
       <span class="font-serif text-lg font-medium"><%= entry_date(result) %></span>
 
       <% if result.draft? %><span class="tag">draft</span><% end %>
-      <% result.tags.each do |tag| %><%= tag_pill(tag) %><% end %>
+      <% sorted_tags(result).each do |tag| %><%= tag_pill(tag) %><% end %>
       <% if result.source.present? %>
         <span class="ml-auto text-xs text-ink-faint"><%= result.source %></span>
       <% end %>

@@ -10,7 +10,9 @@
 
     <div class="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
       <% if @entry.draft? %><span class="tag">draft</span><% end %>
-      <% @entry.tags.each do |tag| %><%= tag_pill(tag) %><% end %>
+      <% @entry.tags.sort_by(&:name).each do |tag| %>
+        <%= link_to entries_path(tag: tag.name) do %><%= tag_pill(tag) %><% end %>
+      <% end %>
       <span><%= @entry.language %></span>
       <% if @entry.source.present? %>
         <span aria-hidden="true">·</span>
