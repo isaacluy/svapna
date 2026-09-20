@@ -1,0 +1,20 @@
+<div class="mx-auto max-w-2xl px-4 py-12">
+  <%= link_to "← All entries", entries_path, class: "text-sm underline" %>
+
+  <h1 class="mt-6 text-2xl font-semibold tracking-tight"><%= @entry.to_s %></h1>
+  <p class="mt-1 text-sm text-gray-500">
+    <%= @entry.language %> · <%= @entry.status %><%= " · #{@entry.source}" if @entry.source.present? %>
+  </p>
+
+  <%# Plain text with paragraph breaks preserved -- no Markdown. %>
+  <div class="mt-8 max-w-[65ch] font-serif text-lg leading-relaxed">
+    <%= simple_format @entry.body %>
+  </div>
+
+  <div class="mt-10 flex gap-4 text-sm">
+    <%= link_to "Edit", edit_entry_path(@entry), class: "underline" %>
+    <%= button_to "Delete", @entry, method: :delete,
+          class: "text-red-700 underline",
+          form: { data: { turbo_confirm: "Delete this entry?" } } %>
+  </div>
+</div>

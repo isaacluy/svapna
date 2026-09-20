@@ -5,6 +5,10 @@
     Signed in as <%= Current.session.user.email_address %>.
   </p>
 
+  <p class="mt-8">
+    <%= link_to "Entries", entries_path, class: "underline" %>
+  </p>
+
   <%= button_to "Sign out", session_path, method: :delete,
         class: "mt-8 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white" %>
 </div>
