@@ -1,0 +1,33 @@
+<div class="mx-auto max-w-2xl px-4 py-12">
+  <div class="flex items-baseline justify-between">
+    <h1 class="text-2xl font-semibold tracking-tight">Entries</h1>
+    <%= link_to "New entry", new_entry_path, class: "text-sm underline" %>
+  </div>
+
+  <p class="mt-1 text-sm text-gray-500">
+    <%= pluralize(@total, "entry") %> total<%= ", showing the most recent #{EntriesController::PAGE_SIZE}" if @total > EntriesController::PAGE_SIZE %>.
+  </p>
+
+  <% if @entries.empty? %>
+    <p class="mt-8 text-gray-600">Nothing here yet. The importer arrives in M3.</p>
+  <% else %>
+    <ul class="mt-8 divide-y divide-gray-200">
+      <% @entries.each do |entry| %>
+        <li class="py-4">
+          <%= link_to entry_path(entry), class: "block" do %>
+            <div class="flex items-baseline gap-2">
+              <span class="font-medium"><%= entry.to_s %></span>
+              <% if entry.draft? %>
+                <span class="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">draft</span>
+              <% end %>
+              <% if entry.source.present? %>
+                <span class="text-xs text-gray-500"><%= entry.source %></span>
+              <% end %>
+            </div>
+            <p class="mt-1 text-sm text-gray-600"><%= entry.excerpt %></p>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>

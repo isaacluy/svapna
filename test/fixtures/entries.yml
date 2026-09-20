@@ -1,0 +1,28 @@
+sueno_es:
+  body: |-
+    Soñé con montañas y con el mar.
+
+    Soñaba mucho esa semana.
+  written_on: 2026-09-18
+  position: 0
+  language: es
+  status: published
+  source: Sueños p.14
+  body_digest: <%= Digest::SHA256.hexdigest("soñé con montañas y con el mar. soñaba mucho esa semana.") %>
+
+dream_en:
+  body: I dreamed about mountains and running by the sea.
+  written_on: 2026-09-17
+  position: 0
+  language: en
+  status: published
+  source: Sueños p.14
+  body_digest: <%= Digest::SHA256.hexdigest("i dreamed about mountains and running by the sea.") %>
+
+unfinished:
+  body: Empezar a escribir
+  written_on: 2026-09-16
+  position: 0
+  language: es
+  status: draft
+  body_digest: <%= Digest::SHA256.hexdigest("empezar a escribir") %>

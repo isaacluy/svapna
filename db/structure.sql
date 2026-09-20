@@ -10,6 +10,179 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching based on trigrams';
+
+
+--
+-- Name: unaccent; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION unaccent; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION unaccent IS 'text search dictionary that removes accents';
+
+
+--
+-- Name: svapna_regconfig(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.svapna_regconfig(lang text) RETURNS regconfig
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    AS $$
+  SELECT CASE lang
+    WHEN 'es' THEN 'public.svapna_es'::regconfig
+    WHEN 'en' THEN 'public.svapna_en'::regconfig
+    ELSE 'pg_catalog.simple'::regconfig
+  END
+$$;
+
+
+--
+-- Name: svapna_en; Type: TEXT SEARCH CONFIGURATION; Schema: public; Owner: -
+--
+
+CREATE TEXT SEARCH CONFIGURATION public.svapna_en (
+    PARSER = pg_catalog."default" );
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR asciiword WITH english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR word WITH public.unaccent, english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR numword WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR email WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR url WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR host WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR sfloat WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR version WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR hword_numpart WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR hword_part WITH public.unaccent, english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR hword_asciipart WITH english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR numhword WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR asciihword WITH english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR hword WITH public.unaccent, english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR url_path WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR file WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR "float" WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR "int" WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR uint WITH simple;
+
+
+--
+-- Name: svapna_es; Type: TEXT SEARCH CONFIGURATION; Schema: public; Owner: -
+--
+
+CREATE TEXT SEARCH CONFIGURATION public.svapna_es (
+    PARSER = pg_catalog."default" );
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR asciiword WITH spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR word WITH public.unaccent, spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR numword WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR email WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR url WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR host WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR sfloat WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR version WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR hword_numpart WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR hword_part WITH public.unaccent, spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR hword_asciipart WITH spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR numhword WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR asciihword WITH spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR hword WITH public.unaccent, spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR url_path WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR file WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR "float" WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR "int" WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR uint WITH simple;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -24,6 +197,46 @@ CREATE TABLE public.ar_internal_metadata (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+
+--
+-- Name: entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.entries (
+    id bigint NOT NULL,
+    body text NOT NULL,
+    written_on date NOT NULL,
+    "position" integer DEFAULT 0 NOT NULL,
+    language character varying DEFAULT 'es'::character varying NOT NULL,
+    status character varying DEFAULT 'published'::character varying NOT NULL,
+    source character varying,
+    body_digest character varying NOT NULL,
+    import_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    search_vector tsvector GENERATED ALWAYS AS ((setweight(to_tsvector(public.svapna_regconfig((language)::text), COALESCE(body, ''::text)), 'A'::"char") || setweight(to_tsvector(public.svapna_regconfig((language)::text), (COALESCE(source, ''::character varying))::text), 'C'::"char"))) STORED,
+    word_vector tsvector GENERATED ALWAYS AS (to_tsvector('simple'::regconfig, COALESCE(body, ''::text))) STORED
+);
+
+
+--
+-- Name: entries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.entries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: entries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.entries_id_seq OWNED BY public.entries.id;
 
 
 --
@@ -101,6 +314,13 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
+-- Name: entries id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.entries ALTER COLUMN id SET DEFAULT nextval('public.entries_id_seq'::regclass);
+
+
+--
 -- Name: sessions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -120,6 +340,14 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: entries entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.entries
+    ADD CONSTRAINT entries_pkey PRIMARY KEY (id);
 
 
 --
@@ -144,6 +372,48 @@ ALTER TABLE ONLY public.sessions
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: index_entries_on_import_dedupe; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_entries_on_import_dedupe ON public.entries USING btree (written_on, body_digest) WHERE (import_id IS NOT NULL);
+
+
+--
+-- Name: index_entries_on_import_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_import_id ON public.entries USING btree (import_id);
+
+
+--
+-- Name: index_entries_on_search_vector; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_search_vector ON public.entries USING gin (search_vector);
+
+
+--
+-- Name: index_entries_on_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_source ON public.entries USING btree (source);
+
+
+--
+-- Name: index_entries_on_status_and_written_on; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_status_and_written_on ON public.entries USING btree (status, written_on DESC);
+
+
+--
+-- Name: index_entries_on_word_vector; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_word_vector ON public.entries USING gin (word_vector);
 
 
 --
@@ -175,6 +445,8 @@ ALTER TABLE ONLY public.sessions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260920170757'),
+('20260920170755'),
 ('20260920153423'),
 ('20260920153422');
 
