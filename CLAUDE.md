@@ -1,136 +1,167 @@
 # Svapna
 
-Private, password-protected journal/blog. Entries are imported from Apple Notes, then searched, tagged, and analysed (word frequency etc.).
+Private, password-protected journal. Entries are imported from Apple Notes, then searched, tagged, and analysed (word frequency etc.). Long-term the app should replace Apple Notes as the place entries get written.
 
-> **Status: mock-up.** Nothing below exists yet. Items marked `TODO` / `OPEN` are undecided. Update this file as decisions are made.
+**Status:** M0 complete — Rails 8.1 scaffolded, dev + prod Docker images working. See the milestone table at the bottom.
 
 ## Stack
 
-- **Rails 8** (Ruby, latest stable), Hotwire (Turbo + Stimulus), Propshaft, importmap (no Node build step)
-- **PostgreSQL 17**: primary store *and* the search engine (full-text search + trigram + unaccent)
-- **Tailwind CSS v4** via `tailwindcss-rails`
-- **Auth**: Rails 8 built-in authentication generator. No public signup; users are created via seed/rake task
-- **Search**: `pg_search` gem (tsearch + trigram). Meilisearch is the upgrade path only if Postgres falls short
-- **Deploy**: Coolify from git (Dockerfile build) is the primary target. Keep the app portable (12-factor config, Dockerfile, standard Postgres, only contrib extensions `pg_trgm` + `unaccent`) so Railway or Heroku remain possible fallbacks
-- **Mobile (future)**: Hotwire Native wrapping this same app. Keep every screen server-rendered and URL-addressable
+- **Rails 8.1.3.1** on **Ruby 3.4.10**, Hotwire (Turbo + Stimulus), Propshaft, importmap (no Node)
+  - Ruby 4.x is current but its ecosystem gaps (`OpenStruct`, `cgi/session`) make it a separate upgrade track. Bump `ARG RUBY_VERSION` in both Dockerfiles together
+- **PostgreSQL 17** — primary store *and* search engine (FTS + trigram + unaccent)
+  - Pinned to 17 because Debian trixie's `postgresql-client` is 17. `structure.sql` is pg_dump output loaded via `psql`, so client and server majors must match. Changing one means changing all three: both Dockerfiles and `docker-compose*.yml`
+- **Tailwind CSS v4** via `tailwindcss-rails` 4.6. CSS-first `@theme`, no `tailwind.config.js`, no Node, no PostCSS
+- **Auth**: Rails 8 built-in authentication generator. No public signup; users created from the console
+- **Search**: hand-written query object. **Not `pg_search`** — it supports neither multiple dictionaries in one query nor per-row language configs
+- **`schema_format = :sql`** — `db/structure.sql` is the schema of record. `schema.rb` cannot represent text search configurations, custom functions or generated columns. Never reintroduce it
+- **Deploy**: Coolify (Git + Dockerfile build pack). Not set up yet. Stay portable: 12-factor config, only trusted extensions, so Railway/Heroku remain fallbacks
+- **Mobile (future)**: Hotwire Native over this same app. Keep every screen server-rendered and URL-addressable
 
 ## Golden rule: nothing is installed locally
 
-Ruby, Node, Postgres etc. are NOT installed on the host. **Every command runs in Docker.** Never suggest `bundle install`, `rails ...`, or `psql` on the host.
+Ruby, Node and Postgres are NOT on the host. **Every command goes through `bin/d`.** Never suggest `bundle install`, `rails ...` or `psql` directly.
 
 ```bash
-docker compose up                              # dev server on http://localhost:3000
-docker compose run --rm web bin/rails c        # console
-docker compose run --rm web bin/rails db:migrate
-docker compose run --rm web bin/rails test     # test suite
-docker compose run --rm web bundle add <gem>   # add a gem (then rebuild: docker compose build web)
-docker compose run --rm web bin/rails import:notes FILE=path/to/export.txt
-docker compose exec db psql -U postgres svapna_development
+bin/d up                 # start the stack -> http://localhost:3000
+bin/d upd                # ... detached
+bin/d down               # stop            (bin/d nuke also drops the volumes)
+bin/d c                  # rails console
+bin/d r db:migrate       # any bin/rails command
+bin/d g model Entry      # rails generate
+bin/d t                  # test suite
+bin/d add <gem>          # bundle add + restart (no rebuild needed)
+bin/d psql               # psql into the db container
+bin/d prod up --build    # run the real production image at :8080
+bin/d                    # full command list
 ```
 
-TODO: add a `Makefile` or `bin/d` wrapper so these are shorter (`make console`, `make test`).
+`bin/d build` is only needed when `Dockerfile.dev` changes, i.e. for a new OS package. Gems live in a named volume and are installed at container start, so `bin/d add` + restart is enough.
 
 ### Docker files
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` | **Production** image. Multi-stage, non-root, precompiled assets. This is what Coolify builds |
-| `Dockerfile.dev` | **Development** image. Bind-mounts source, includes dev/test gems |
-| `docker-compose.yml` | Dev: `web` + `db` (Postgres), named volumes for gems and pgdata |
-| `docker-compose.prod.yml` | Optional: prod-like local run / Coolify compose deploy |
+| `Dockerfile` | **Production.** Rails-generated, lightly adapted. What Coolify builds |
+| `Dockerfile.dev` | **Development.** No app code, no gems — source is bind-mounted, gems are in a volume |
+| `docker-compose.yml` | Dev: `web` + `db`, healthcheck-gated |
+| `docker-compose.prod.yml` | Runs the production image locally for verification |
+| `bin/d` | Command wrapper |
+| `bin/docker-dev-entrypoint` | Dev: `bundle check \|\| bundle install`, clears a stale server pid |
+| `bin/docker-entrypoint` | Prod: runs `db:prepare` when the command is the server |
 
-Config comes from environment variables (`DATABASE_URL`, `SECRET_KEY_BASE`/`RAILS_MASTER_KEY`, `APP_HOST`). Never commit secrets. `.env.example` documents them.
+Config is environment variables only (`DATABASE_URL` in prod, `SECRET_KEY_BASE`, `APP_HOST`). Never commit secrets.
 
-## Domain model (planned)
+### Things that will bite
 
-- `Entry`: `body` (text), `written_on` (date from the import), `position` (order within its source note), `important` (bool), `source` (string; the Apple Notes note title, e.g. "Sueños p.14"), `language` (Postgres text-search config name, e.g. `spanish`), `search_vector` (tsvector, generated), timestamps
-  - Keep **both** `written_on` and `created_at`. On import set both from the entry's date (`created_at` at midday UTC to avoid timezone off-by-one)
-  - Entries have **no title**. An entry is identified by its date (`written_on`), shown as the heading in lists and on the entry page. Several entries may share a date; `position` keeps their order stable. Do not add a `title` column
-- `Category`: one per entry (`Entry belongs_to :category, optional`)
-- `Tag` + `Tagging`: many-to-many. `important` is auto-applied on import but also a normal tag
-- `User`: single/few accounts, has_secure_password
+- **No `DATABASE_URL` in development.** It overrides config for whichever environment loads, so `RAILS_ENV=test` would truncate the development database. Dev uses discrete `DB_HOST`/`DB_USER`/`DB_PASSWORD`
+- **Keep `Gemfile.lock` multi-platform.** `bundle lock --add-platform x86_64-linux aarch64-linux` after any regeneration. We develop on arm64; Coolify builds amd64 with a frozen lockfile and will fail the build otherwise
+- **Never add the `listen` gem** — it switches Rails to the evented file watcher, which does not work over a bind mount
+- **If CSS changes stop appearing**, inotify isn't crossing the bind mount: use `css: bin/rails tailwindcss:watch[poll]` in `Procfile.dev`
+- **Destroy the bundle volume after a Ruby bump** (`bin/d nuke`) or native extensions segfault against the old ABI
+- Production `CMD` is `["./bin/thrust", "./bin/rails", "server"]`. `bin/docker-entrypoint` matches the *last two* args to decide whether to migrate — do not "simplify" that to `$1`/`$2` or migrations stop running silently
+
+## Domain model
+
+- `Entry`: `body`, `written_on` (date from the import), `position`, `language`, `status` (`draft`/`published`), `source` (Apple Notes note title; NULL = written here), `body_digest`, `import_id`, `search_vector`, `word_vector`, timestamps
+  - **No title.** An entry is identified by `written_on`. Several entries may share a date; `position` orders them. Do not add a `title` column
+  - Keep both `written_on` and `created_at`; import sets both
+  - Dedupe index on `(written_on, body_digest)` is **partial: `WHERE import_id IS NOT NULL`**. Idempotency is for imports; without the partial clause two new empty drafts on the same day collide
+- `Tag` + `Tagging`: many-to-many. **No `Category` model** — tags do that job. `important` is an ordinary tag
+- `Import`: one row per import run, so entries can be traced and undone
+- `User` + `Session`: from the Rails generator
+
+**Two tsvectors, deliberately.** `search_vector` is stemmed and accent-folded for *matching*; `word_vector` is plain `simple` for *counting*, so word frequency reports `sueños`, not `suenos` or the stem `sueñ`.
 
 ## Notes import
 
-Input is a plain-text export from Apple Notes. Format:
+Plain-text export from Apple Notes:
 
 ```
 <note title>
 ———
 YYYY/MM/DD
 
-<body, may contain blank lines>
-
+<body>
 ———
 YYYY/MM/DD
 
 <body>
 ```
 
-Parser rules (implement as `app/services/notes_importer.rb`, with tests using the sample above as a fixture):
+Parser rules (`app/services/notes_import/parser.rb`, pure and unit-tested; `committer.rb` does the writing):
 
-1. First line is the **note title**, which is only a grouping label (the user creates many notes like "Sueños p.1" … "Sueños p.14"). It is stored as `source` on every entry, NOT as the entry title. Split the rest on the `———` divider (three em dashes, on its own line). Also tolerate `---`.
-2. In each chunk, the first non-blank line is the date (`YYYY/MM/DD`) → `written_on`. Everything after is the body, preserving paragraph breaks.
-3. If the body contains **important** or **importante** (case-insensitive, whole word, accent-insensitive; `( important ? )` matches), tag it `important`. Keep the keyword list in config so Portuguese/French/Italian (`importante`, `important`, `importante`) can be extended.
-4. Import must be **idempotent**: re-importing must not create duplicates (dedupe on `source` + `written_on` + body digest). Multiple entries on the same date are allowed.
-5. Malformed chunks (no parsable date) are skipped and reported, never silently dropped and never abort the whole import.
-6. Detect each entry's `language` on import (en/es/pt/fr/it) and let the user override it afterwards.
-7. Provide a rake task (`import:notes`) and a UI that accepts **multiple files or pasted text at once**.
-8. UI import flow is **preview first** (dry run): show counts (new / duplicate / skipped), a sample, and detected languages, then confirm to commit. Commit runs in a single transaction per note.
+1. Normalise line endings and non-breaking spaces first.
+2. Divider = a line of 3+ dashes of any kind (`———`, `---`, `–––`).
+3. Text before the first divider is the **note title** → stored as `source` on every entry. It is a grouping label ("Sueños p.14"), never an entry title.
+4. First non-blank line of each chunk is the date → `written_on`; the rest is the body, paragraph breaks preserved.
+5. Tag `important` if the unaccented body matches `important|importante|importantes`. Keyword list in `config/import_keywords.yml`.
+6. Detect `language` by stopword ratio (no gem). User-overridable.
+7. Idempotent: `body_digest` + the partial unique index.
+8. Dateless chunks are recorded in `imports.errors`, never silently dropped, never aborting the run.
 
-Volume: the user has ~14 notes (Sueños p.1–p.14) with many entries each. That is small data for Postgres (thousands of rows), so no batching infrastructure or background queue is needed beyond a transaction per file.
+**Import + undo, not preview.** Each run creates an `Import`; the result page shows counts and parsed entries and offers Undo, which destroys that batch's entries. Simpler than a stateless preview round-trip and leaves a permanent record of provenance.
 
-`OPEN`: how do notes get out of Apple Notes? Baseline is copy/paste into the import form (works today). Possible later: a one-off `osascript` export script.
+Entry points: `bin/d r import:notes FILE=...` and an authenticated UI taking pasted text or multiple files. Import one note first and read the result before doing the rest.
 
 ## Search
 
-- Postgres FTS with a generated `tsvector`: body weight A, tag and category names weight B, `source` (note name) weight C
-- Languages: **Spanish and English** now; **Portuguese (BR), French, Italian** later. All ship as built-in Postgres text-search configs (`spanish`, `english`, `portuguese`, `french`, `italian`), so adding one is a config change, not new infrastructure
-- Each entry's `search_vector` uses the config named in its `language` column, plus `unaccent`. Queries search across languages (query is parsed with each supported config, or with `simple`), so a Spanish search still finds English entries and vice versa
-- Support: body-only / all-fields scope, phrase search, prefix search, typo tolerance (trigram), filters (tag, category, source note, date or date range, important), highlighted snippets (`ts_headline`), ranking
-- GIN index on the tsvector and a trigram index on body (for typo tolerance). Check `EXPLAIN` before adding more
+- `search_vector` is a STORED generated column: `setweight(body,'A') || setweight(source,'C')`, built with the entry's own language config. Generated columns can only reference their own row, so **tags and category are filters, not part of the vector**
+- Custom text search configs prepend the `unaccent` *dictionary* to the stemmer (`svapna_es`, `svapna_en`) — this is what makes "sueno" find "sueños". The bare `unaccent()` function is STABLE and unusable in an index; the dictionary route is how that's avoided
+- `svapna_regconfig(text)` is a declared-IMMUTABLE CASE over **schema-qualified literal** config names, falling back to `simple`. A plain `language::regconfig` cast is STABLE and rejected in a generated column
+- Query with `websearch_to_tsquery` under each active config, OR'd (`||`) — recall beats precision here. Free Google-style syntax, and it never raises on malformed input
+- `ts_headline` **only on the current page** — it re-parses the original document and is slow
+- Default scope excludes drafts
+- Adding a language = one migration: a new config plus a `WHEN` branch. Postgres ships stemmers for es/en/pt/fr/it
+- **Altering a text search config does not recompute existing generated columns.** Any such migration must drop and re-add the column expression and `REINDEX`
 
 ## Text analytics
 
-Service objects in `app/services/analytics/`:
+`Analytics::WordFrequency.call(scope:, stopwords:, limit:)` → one code path via `ts_stat` over `word_vector`, so "these 5 entries" and "all entries" always agree.
 
-- `WordFrequency.call(entries:, stopwords: :default, limit: nil)` → `{ "word" => count }` for any set of entries (1, 5, or all)
-- Tokenise with Unicode-aware regex, downcase, strip accents only for grouping (display the original form)
-- Stopword lists live in `config/stopwords/{en,es,pt,fr,it}.txt`, are editable, and are selectable per call. Default: apply each entry's own language list, or the union of all lists for mixed selections
-- Prefer SQL (`regexp_split_to_table` / `ts_stat`) for whole-corpus queries; plain Ruby is fine for small selections
-- Must be exposed both in the UI (an "Insights" page) and callable from the Rails console
+- Returns `ndoc` (entries containing) and `nentry` (occurrences)
+- `ts_stat` takes its inner query as a **string literal** — build it with `connection.quote(relation.select(:word_vector).to_sql)`, never string interpolation
+- Stopword lists in `config/stopwords/{en,es,pt,fr,it}.txt`, editable, applied after aggregation
+- Full-corpus scan: cache the all-entries result, bust on import
+- Must work from the console as well as the UI
 
 ## Design system
 
-Simple, clean, reading-first. Mobile-first, then scale up.
+Reading-first, mobile-first. Tokens once, never hard-coded hex in views.
 
-- Tailwind v4 with design tokens defined once in `app/assets/tailwind/theme.css` (`@theme`): colours, type scale, spacing, radius. Never hard-code hex values in views
-- Fonts: serif for reading body (e.g. Newsreader or Source Serif), sans for UI (e.g. Inter). Self-host with `font-display: swap`. `OPEN`: final picks
-- Light and dark mode via `prefers-color-scheme`
-- Components as ViewComponent or partials: button, input, tag chip, entry card, search bar
-- Comfortable measure (~65ch), generous line-height, 44px minimum touch targets, no hover-only interactions (native app is coming)
+- **Newsreader** for entry text, **Inter** for UI. Self-hosted (no Google CDN), subset latin + latin-ext for Spanish accents, `font-display: swap`
+- Tokens in `app/assets/tailwind/application.css` under `@theme`
+- Light + dark via `prefers-color-scheme`
+- ~65ch measure, generous line-height, 44px touch targets, no hover-only interactions (Hotwire Native is coming)
+- Partials first; ViewComponent only when they carry real logic
 
 ## Conventions
 
-- Keep it boring: standard Rails conventions, fat models where sensible, service objects only for the importer and analytics
-- Server-rendered HTML first. Add Stimulus only where needed. No SPA, no JSON API until the native app needs one
-- Every feature ships with tests (Minitest, fixtures). Importer and analytics need thorough unit tests
-- All routes except login require authentication (`before_action` in `ApplicationController`)
-- Migrations are reversible. Use `strong_migrations` so we do not lock tables
-- Run `docker compose run --rm web bin/rubocop` and `bin/rails test` before committing
+- Keep it boring: standard Rails, service objects only for the importer and analytics, a query object for search
+- Server-rendered HTML first. Stimulus where needed. No SPA, no JSON API until the native app needs one
+- Minitest + fixtures. The parser and the search/analytics SQL carry the risk and get thorough tests — test search against real Postgres, never stubbed
+- All routes except login require authentication
+- Reversible migrations. Review `db/structure.sql` diffs rather than skimming them — it is the schema of record
+- `bin/d lint` and `bin/d t` before committing
 
 ## Git
 
-- Default branch: `main`. Feature work on branches (`epic/*`, `feat/*`)
+- Default branch `main`; work on `epic/*` / `feat/*`. Currently on `feat/m0`
 - Small, focused commits. Do not commit unless asked
 
-## Roadmap
+## Milestones
 
-1. Scaffold Rails 8 in Docker (dev + prod images), Postgres, Tailwind, auth
-2. `Entry` model, list/show/edit, design system baseline
-3. Notes importer + upload UI
-4. Search
-5. Tags/categories
-6. Word-frequency insights
-7. Deploy on Coolify
-8. Hotwire Native shell (iOS/Android)
+Build **one milestone at a time**, then stop for review.
+
+| # | Milestone | State |
+|---|---|---|
+| M0 | Bootstrap: Rails 8.1 in Docker, dev + prod images, `bin/d`, `structure.sql` | **done** |
+| M1 | Auth: `generate authentication`, lock down, seed user | next |
+| M2 | `Entry` model + the Postgres search migration + plain CRUD | |
+| M3 | Importer: parser, committer, `Import` + undo, rake task + UI | |
+| M4 | Design system + reading UI | |
+| M5 | Search: query object, filters, `ts_headline`, results UI | |
+| M6 | Tags | |
+| M7 | Insights: word frequency, stopwords | |
+| M8 | Composer: authoring, autosave, drafts | |
+| M9 | Deploy to Coolify (can be pulled forward any time) | |
+| M10 | Hotwire Native shell | |
