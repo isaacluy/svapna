@@ -1,1 +1,275 @@
 @import "tailwindcss";
+
+/* Tailwind v4 scans for class names starting from this file's directory.
+   Point it at app/ explicitly so views, helpers and components are all seen. */
+@source "../../../app";
+
+/* ---------------------------------------------------------------------------
+   Fonts
+
+   Self-hosted variable fonts: no Google CDN (privacy, and the container works
+   offline). One file per family covers every weight, and unicode-range means
+   latin-ext is only fetched if a character actually needs it.
+
+   Propshaft rewrites these url() references to digested paths at precompile,
+   so they are cache-busted automatically.
+--------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("newsreader-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("newsreader-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Newsreader";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("newsreader-latin-wght-italic.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Newsreader";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("newsreader-latin-ext-wght-italic.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("inter-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("inter-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ---------------------------------------------------------------------------
+   Palette
+
+   Defined as plain custom properties so a media query can swap them, then
+   exposed to Tailwind through `@theme inline` (which emits var() references
+   rather than baking in values). Every colour is defined once, here.
+--------------------------------------------------------------------------- */
+:root {
+  --paper: #faf9f6;        /* page ground, warm off-white  */
+  --surface: #ffffff;      /* cards, inputs                */
+  --surface-sunk: #f2f0ea; /* quiet fills                  */
+  --ink: #1b1a17;          /* body text                    */
+  --ink-muted: #6c685f;    /* metadata                     */
+  --ink-faint: #97928a;    /* timestamps, placeholders     */
+  --rule: #e6e2d9;         /* hairlines                    */
+  --accent: #4b4f86;       /* links, focus                 */
+  --accent-soft: #eceCf6;  /* accent fills                 */
+  --marker: #8a5a2b;       /* the "important" tag          */
+  --marker-soft: #f6eddf;
+  --danger: #9b3232;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #15141a;
+    --surface: #1d1c24;
+    --surface-sunk: #24222c;
+    --ink: #e9e6df;
+    --ink-muted: #a09b91;
+    --ink-faint: #7b766d;
+    --rule: #2e2b38;
+    --accent: #a8ade4;
+    --accent-soft: #252539;
+    --marker: #d8a163;
+    --marker-soft: #33271a;
+    --danger: #e08585;
+  }
+}
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: "Newsreader", ui-serif, Georgia, "Times New Roman", serif;
+
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-sunk: var(--surface-sunk);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-rule: var(--rule);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-marker: var(--marker);
+  --color-marker-soft: var(--marker-soft);
+  --color-danger: var(--danger);
+
+  /* A comfortable measure for prose. */
+  --container-measure: 34rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
+@layer base {
+  html {
+    color-scheme: light dark;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--accent-soft);
+  }
+
+  /* Visible focus for keyboard users, without a permanent outline on click. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  input,
+  textarea,
+  select {
+    background-color: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--rule);
+  }
+
+  ::placeholder {
+    color: var(--ink-faint);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Components
+
+   Small, named classes rather than long utility chains repeated across views.
+--------------------------------------------------------------------------- */
+@layer components {
+  /* The reading surface for an entry body. */
+  .prose-entry {
+    font-family: var(--font-serif);
+    font-size: 1.1875rem;
+    line-height: 1.75;
+    font-weight: 380;
+    letter-spacing: 0.003em;
+    color: var(--ink);
+  }
+  .prose-entry p {
+    margin-block: 0 1.35em;
+    hanging-punctuation: first last;
+  }
+  .prose-entry p:last-child {
+    margin-bottom: 0;
+  }
+
+  .link {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  /* 44px minimum target: the native app is coming, and these are touch sizes. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding-inline: 1.125rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 550;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background-color: var(--ink);
+    color: var(--paper);
+  }
+  .btn-quiet {
+    background-color: var(--surface-sunk);
+    color: var(--ink);
+  }
+  .btn-danger {
+    color: var(--danger);
+    background: none;
+    padding-inline: 0;
+  }
+
+  .field {
+    display: block;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.9375rem;
+  }
+
+  .label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    color: var(--ink-muted);
+    margin-bottom: 0.375rem;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 0.3125rem;
+    padding: 0.125rem 0.4375rem;
+    font-size: 0.6875rem;
+    font-weight: 550;
+    letter-spacing: 0.02em;
+    background-color: var(--surface-sunk);
+    color: var(--ink-muted);
+  }
+  .tag-marker {
+    background-color: var(--marker-soft);
+    color: var(--marker);
+  }
+
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 0.75rem;
+  }
+}
