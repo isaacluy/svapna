@@ -92,6 +92,7 @@
   --rule: #e6e2d9;         /* hairlines                    */
   --accent: #4b4f86;       /* links, focus                 */
   --accent-soft: #eceCf6;  /* accent fills                 */
+  --chart-fill: #5b57a8;   /* data marks (see Insights)    */
   --marker: #8a5a2b;       /* the "important" tag          */
   --marker-soft: #f6eddf;
   --danger: #9b3232;
@@ -108,6 +109,7 @@
     --rule: #2e2b38;
     --accent: #a8ade4;
     --accent-soft: #252539;
+    --chart-fill: #8083da;
     --marker: #d8a163;
     --marker-soft: #33271a;
     --danger: #e08585;
@@ -127,6 +129,7 @@
   --color-rule: var(--rule);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
+  --color-chart-fill: var(--chart-fill);
   --color-marker: var(--marker);
   --color-marker-soft: var(--marker-soft);
   --color-danger: var(--danger);
@@ -265,6 +268,40 @@
   .tag-marker {
     background-color: var(--marker-soft);
     color: var(--marker);
+  }
+
+  /* Ranked magnitude, one series -> one hue. Never a value-ramp that colours
+     each bar darker-where-bigger: that double-encodes length as hue and burns
+     the only free channel on what the bar already shows.
+     Both fill values are validated for chroma, lightness band and >=3:1
+     contrast against their own surface (dataviz validate_palette). */
+  .meter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .meter-fill {
+    height: 0.625rem;              /* thin mark, well under the 24px cap */
+    min-width: 2px;
+    background-color: var(--chart-fill);
+    border-radius: 0 3px 3px 0;    /* rounded data-end, square at the baseline */
+    flex: none;
+  }
+  .meter-value {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    color: var(--ink-muted);       /* text never wears the data colour */
+  }
+  /* 2px of surface separating touching marks, not a border around them. */
+  .meter-row + .meter-row .meter-fill {
+    margin-top: 2px;
+  }
+
+  @media (forced-colors: active) {
+    .meter-fill {
+      background-color: CanvasText;
+      border: 1px solid CanvasText;
+    }
   }
 
   .card {
