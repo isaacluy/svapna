@@ -1,0 +1,29 @@
+# Connection settings come from discrete DB_* environment variables rather than
+# DATABASE_URL. DATABASE_URL is merged over the config of whichever environment
+# is loading, so setting it in development would make `RAILS_ENV=test` connect
+# to -- and truncate -- the development database.
+#
+# In production Coolify supplies DATABASE_URL, which Rails merges over the
+# production block below, so that block is only a fallback.
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  host: <%= ENV.fetch("DB_HOST", "localhost") %>
+  port: <%= ENV.fetch("DB_PORT", 5432) %>
+  username: <%= ENV.fetch("DB_USER", "postgres") %>
+  password: <%= ENV.fetch("DB_PASSWORD", "postgres") %>
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
+
+development:
+  <<: *default
+  database: svapna_development
+
+# Erased and regenerated whenever the schema changes. Never point this at the
+# development database.
+test:
+  <<: *default
+  database: svapna_test
+
+production:
+  <<: *default
+  database: <%= ENV.fetch("DB_NAME", "svapna_production") %>
