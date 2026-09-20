@@ -150,7 +150,7 @@ bin/d r import:undo IMPORT=3
 
 ## Text analytics
 
-`Analytics::WordFrequency` (`app/services/analytics/`) answers "how often does each word appear" over any set of entries.
+`Analytics::WordFrequency` (`app/services/analytics/`) answers "how often does each word appear" over any set of entries. It is a plain service object, so it works from the console (`bin/d c`) exactly as it does from the UI.
 
 ```ruby
 Analytics::WordFrequency.call                                # everything published
@@ -163,6 +163,7 @@ Analytics::WordFrequency.call(stopwords: :none, limit: 200)
 - Runs over **`word_vector`**, not `search_vector` — unstemmed and accented, so results read as `montañas`, not `montan` or `montanas`
 - `ts_stat` takes its inner query as a **string literal**: built with `connection.quote(scope.select(:word_vector).to_sql)`, never interpolation. User input only reaches it as a bound value inside the relation
 - **Stopwords are applied in SQL, before `LIMIT`** — otherwise the top list would be padded with them. `:auto` uses the lists for the languages actually present; `:none` keeps everything; an explicit array overrides
+- **Stopword lists are editable files**, `config/stopwords/<language>.txt` (currently `es` and `en`), read by `Analytics::Stopwords`. The import language detector reads the same files, so editing one affects both. Adding a language means adding a file
 - Matching is accent-folded (`lower(unaccent(word))`) because the lists hold `mas` while the text says `más`. Inlined rather than wrapped in a function: nothing is indexed on it
 - **An empty stopword list skips the clause entirely.** An empty Ruby array renders as `NULL`, and `= ANY (ARRAY[NULL])` is `NULL`, which would filter out every row rather than none
 - A full-corpus scan, so results are **memoised against the data they came from**: the cache key includes `Entry.maximum(:updated_at)` and `Entry.count`, so any write changes the key. No explicit invalidation to forget
@@ -174,16 +175,6 @@ The UI is `/insights`, which **reuses `EntrySearch`** (via `scope_for_analytics`
 Ranked magnitude, **one series, so one hue** from `--chart-fill`. Never a value-ramp colouring each bar darker-where-bigger: that double-encodes length as hue and spends the only free channel on what the bar already shows. No legend (one series). Values wear ink tokens, never the data colour.
 
 Both fill values (`#5b57a8` light, `#8083da` dark) were checked with the dataviz validator for chroma, lightness band and ≥3:1 contrast against their own surface — the accent itself fails the chroma floor and reads too gray for a data mark. Marks are thin, with a rounded data-end, a 2px surface gap between neighbours, and a `forced-colors` fallback. The table is semantic and readable with the bars ignored.
-
-## Text analytics
-
-`Analytics::WordFrequency.call(scope:, stopwords:, limit:)` → one code path via `ts_stat` over `word_vector`, so "these 5 entries" and "all entries" always agree.
-
-- Returns `ndoc` (entries containing) and `nentry` (occurrences)
-- `ts_stat` takes its inner query as a **string literal** — build it with `connection.quote(relation.select(:word_vector).to_sql)`, never string interpolation
-- Stopword lists in `config/stopwords/{en,es,pt,fr,it}.txt`, editable, applied after aggregation
-- Full-corpus scan: cache the all-entries result, bust on import
-- Must work from the console as well as the UI
 
 ## Design system
 
