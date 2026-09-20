@@ -10,6 +10,179 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching based on trigrams';
+
+
+--
+-- Name: unaccent; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION unaccent; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION unaccent IS 'text search dictionary that removes accents';
+
+
+--
+-- Name: svapna_regconfig(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.svapna_regconfig(lang text) RETURNS regconfig
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    AS $$
+  SELECT CASE lang
+    WHEN 'es' THEN 'public.svapna_es'::regconfig
+    WHEN 'en' THEN 'public.svapna_en'::regconfig
+    ELSE 'pg_catalog.simple'::regconfig
+  END
+$$;
+
+
+--
+-- Name: svapna_en; Type: TEXT SEARCH CONFIGURATION; Schema: public; Owner: -
+--
+
+CREATE TEXT SEARCH CONFIGURATION public.svapna_en (
+    PARSER = pg_catalog."default" );
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR asciiword WITH english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR word WITH public.unaccent, english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR numword WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR email WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR url WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR host WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR sfloat WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR version WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR hword_numpart WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR hword_part WITH public.unaccent, english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR hword_asciipart WITH english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR numhword WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR asciihword WITH english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR hword WITH public.unaccent, english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR url_path WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR file WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR "float" WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR "int" WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_en
+    ADD MAPPING FOR uint WITH simple;
+
+
+--
+-- Name: svapna_es; Type: TEXT SEARCH CONFIGURATION; Schema: public; Owner: -
+--
+
+CREATE TEXT SEARCH CONFIGURATION public.svapna_es (
+    PARSER = pg_catalog."default" );
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR asciiword WITH spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR word WITH public.unaccent, spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR numword WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR email WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR url WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR host WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR sfloat WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR version WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR hword_numpart WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR hword_part WITH public.unaccent, spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR hword_asciipart WITH spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR numhword WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR asciihword WITH spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR hword WITH public.unaccent, spanish_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR url_path WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR file WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR "float" WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR "int" WITH simple;
+
+ALTER TEXT SEARCH CONFIGURATION public.svapna_es
+    ADD MAPPING FOR uint WITH simple;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -175,6 +348,7 @@ ALTER TABLE ONLY public.sessions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260920170755'),
 ('20260920153423'),
 ('20260920153422');
 
