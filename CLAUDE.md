@@ -2,7 +2,7 @@
 
 Private, password-protected journal. Entries are imported from Apple Notes, then searched, tagged, and analysed (word frequency etc.). Long-term the app should replace Apple Notes as the place entries get written.
 
-**Status:** M0 complete — Rails 8.1 scaffolded, dev + prod Docker images working. See the milestone table at the bottom.
+**Status:** M1 complete — scaffolding, Docker images, and authentication working. See the milestone table at the bottom.
 
 ## Stack
 
@@ -11,7 +11,7 @@ Private, password-protected journal. Entries are imported from Apple Notes, then
 - **PostgreSQL 17** — primary store *and* search engine (FTS + trigram + unaccent)
   - Pinned to 17 because Debian trixie's `postgresql-client` is 17. `structure.sql` is pg_dump output loaded via `psql`, so client and server majors must match. Changing one means changing all three: both Dockerfiles and `docker-compose*.yml`
 - **Tailwind CSS v4** via `tailwindcss-rails` 4.6. CSS-first `@theme`, no `tailwind.config.js`, no Node, no PostCSS
-- **Auth**: Rails 8 built-in authentication generator. No public signup; users created from the console
+- **Auth**: Rails 8 built-in authentication generator (`User` + `Session`, bcrypt). No public signup — create accounts with `bin/d r user:create EMAIL=... PASSWORD=...` (`user:list` to see them)
 - **Search**: hand-written query object. **Not `pg_search`** — it supports neither multiple dictionaries in one query nor per-row language configs
 - **`schema_format = :sql`** — `db/structure.sql` is the schema of record. `schema.rb` cannot represent text search configurations, custom functions or generated columns. Never reintroduce it
 - **Deploy**: Coolify (Git + Dockerfile build pack). Not set up yet. Stay portable: 12-factor config, only trusted extensions, so Railway/Heroku remain fallbacks
@@ -29,6 +29,7 @@ bin/d c                  # rails console
 bin/d r db:migrate       # any bin/rails command
 bin/d g model Entry      # rails generate
 bin/d t                  # test suite
+bin/d ci                 # full pipeline: setup, rubocop, audits, tests, seeds
 bin/d add <gem>          # bundle add + restart (no rebuild needed)
 bin/d psql               # psql into the db container
 bin/d prod up --build    # run the real production image at :8080
@@ -58,6 +59,7 @@ Config is environment variables only (`DATABASE_URL` in prod, `SECRET_KEY_BASE`,
 - **Never add the `listen` gem** — it switches Rails to the evented file watcher, which does not work over a bind mount
 - **If CSS changes stop appearing**, inotify isn't crossing the bind mount: use `css: bin/rails tailwindcss:watch[poll]` in `Procfile.dev`
 - **Destroy the bundle volume after a Ruby bump** (`bin/d nuke`) or native extensions segfault against the old ABI
+- **`json` is pinned to `~> 2.7`.** json 3.0 made `JSON.parse` take a single positional argument, but ActiveSupport 8.1.3.1 still passes the options Hash positionally. Under json 3.x every signed cookie read raises `ArgumentError`, so *authentication breaks entirely* and the failure surfaces deep in Rails internals, not in your code. Do not remove the pin without running `bin/d ci`
 - Production `CMD` is `["./bin/thrust", "./bin/rails", "server"]`. `bin/docker-entrypoint` matches the *last two* args to decide whether to migrate — do not "simplify" that to `$1`/`$2` or migrations stop running silently
 
 ## Domain model
@@ -141,11 +143,11 @@ Reading-first, mobile-first. Tokens once, never hard-coded hex in views.
 - Minitest + fixtures. The parser and the search/analytics SQL carry the risk and get thorough tests — test search against real Postgres, never stubbed
 - All routes except login require authentication
 - Reversible migrations. Review `db/structure.sql` diffs rather than skimming them — it is the schema of record
-- `bin/d lint` and `bin/d t` before committing
+- `bin/d ci` before committing (it runs RuboCop, the security audits, tests and seeds)
 
 ## Git
 
-- Default branch `main`; work on `epic/*` / `feat/*`. Currently on `feat/m0`
+- Default branch `main`; work on `epic/*` / `feat/*`. Currently on `feat/m1`
 - Small, focused commits. Do not commit unless asked
 
 ## Milestones
@@ -155,8 +157,8 @@ Build **one milestone at a time**, then stop for review.
 | # | Milestone | State |
 |---|---|---|
 | M0 | Bootstrap: Rails 8.1 in Docker, dev + prod images, `bin/d`, `structure.sql` | **done** |
-| M1 | Auth: `generate authentication`, lock down, seed user | next |
-| M2 | `Entry` model + the Postgres search migration + plain CRUD | |
+| M1 | Auth: `generate authentication`, lock down, user rake task | **done** |
+| M2 | `Entry` model + the Postgres search migration + plain CRUD | next |
 | M3 | Importer: parser, committer, `Import` + undo, rake task + UI | |
 | M4 | Design system + reading UI | |
 | M5 | Search: query object, filters, `ts_headline`, results UI | |

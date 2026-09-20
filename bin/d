@@ -40,6 +40,8 @@ case "$cmd" in
   seed)        run bin/rails db:seed ;;
   reset)       run bin/rails db:drop db:create db:migrate db:seed ;;
   t|test)      run bin/rails test "$@" ;;
+  # The full pipeline (setup, rubocop, audits, tests, seeds) -- see config/ci.rb.
+  ci)          run bin/ci "$@" ;;
   lint)        run bin/rubocop "$@" ;;
   lintf)       run bin/rubocop -a "$@" ;;
   sec)         run bin/brakeman --no-pager ;;
@@ -71,6 +73,7 @@ bin/d - run everything through Docker
   migrate | prepare | seed | reset | routes
   t [args]       bin/rails test
   lint | lintf | sec
+  ci             full pipeline: setup, rubocop, audits, tests, seeds
 
   b <args>       bundle <args>          add <gem>      bundle add + restart
   lock           re-lock for x86_64-linux and aarch64-linux

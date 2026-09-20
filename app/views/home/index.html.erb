@@ -1,0 +1,10 @@
+<%# Placeholder home page. M4 replaces this with the real reading UI. %>
+<div class="mx-auto max-w-2xl px-4 py-16">
+  <h1 class="text-3xl font-semibold tracking-tight">Svapna</h1>
+  <p class="mt-2 text-gray-600">
+    Signed in as <%= Current.session.user.email_address %>.
+  </p>
+
+  <%= button_to "Sign out", session_path, method: :delete,
+        class: "mt-8 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white" %>
+</div>
