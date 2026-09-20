@@ -2,7 +2,7 @@
 
 Private, password-protected journal. Entries are imported from Apple Notes, then searched, tagged, and analysed (word frequency etc.). Long-term the app should replace Apple Notes as the place entries get written.
 
-**Status:** M1 complete — scaffolding, Docker images, and authentication working. See the milestone table at the bottom.
+**Status:** M2 complete — scaffolding, Docker, authentication, and the `Entry` model with its Postgres search layer. See the milestone table at the bottom.
 
 ## Stack
 
@@ -68,6 +68,8 @@ Config is environment variables only (`DATABASE_URL` in prod, `SECRET_KEY_BASE`,
   - **No title.** An entry is identified by `written_on`. Several entries may share a date; `position` orders them. Do not add a `title` column
   - Keep both `written_on` and `created_at`; import sets both
   - Dedupe index on `(written_on, body_digest)` is **partial: `WHERE import_id IS NOT NULL`**. Idempotency is for imports; without the partial clause two new empty drafts on the same day collide
+  - `body_digest` is set in a **`before_save`**, not `before_validation`, so a bulk import writing with `validate: false` still satisfies the NOT NULL constraint
+  - `import_id` exists but has no foreign key and no association yet — M3 adds the `imports` table, the FK, and `belongs_to :import`
 - `Tag` + `Tagging`: many-to-many. **No `Category` model** — tags do that job. `important` is an ordinary tag
 - `Import`: one row per import run, so entries can be traced and undone
 - `User` + `Session`: from the Rails generator
@@ -113,7 +115,8 @@ Entry points: `bin/d r import:notes FILE=...` and an authenticated UI taking pas
 - Query with `websearch_to_tsquery` under each active config, OR'd (`||`) — recall beats precision here. Free Google-style syntax, and it never raises on malformed input
 - `ts_headline` **only on the current page** — it re-parses the original document and is slow
 - Default scope excludes drafts
-- Adding a language = one migration: a new config plus a `WHEN` branch. Postgres ships stemmers for es/en/pt/fr/it
+- Adding a language = one migration: a new config plus a `WHEN` branch in `svapna_regconfig`, and `Entry::LANGUAGES`. Postgres ships stemmers for es/en/pt/fr/it
+- **Stopwords vanish inside phrases.** `"con montañas"` reduces to `montañas` under the Spanish configuration, so a phrase search can match more than it looks like it should. Covered by a test so the behaviour is not mistaken for a bug
 - **Altering a text search config does not recompute existing generated columns.** Any such migration must drop and re-add the column expression and `REINDEX`
 
 ## Text analytics
@@ -158,8 +161,8 @@ Build **one milestone at a time**, then stop for review.
 |---|---|---|
 | M0 | Bootstrap: Rails 8.1 in Docker, dev + prod images, `bin/d`, `structure.sql` | **done** |
 | M1 | Auth: `generate authentication`, lock down, user rake task | **done** |
-| M2 | `Entry` model + the Postgres search migration + plain CRUD | next |
-| M3 | Importer: parser, committer, `Import` + undo, rake task + UI | |
+| M2 | `Entry` model + the Postgres search migration + plain CRUD | **done** |
+| M3 | Importer: parser, committer, `Import` + undo, rake task + UI | next |
 | M4 | Design system + reading UI | |
 | M5 | Search: query object, filters, `ts_headline`, results UI | |
 | M6 | Tags | |
