@@ -5,6 +5,10 @@
     <% end %>
 
     <nav class="flex items-center gap-1 text-sm">
+      <%= form_with url: entries_path, method: :get, class: "hidden sm:block" do %>
+        <%= search_field_tag :q, params[:q], autocomplete: "off", placeholder: "Search…",
+              class: "field !min-h-0 w-40 py-1.5 text-sm md:w-56" %>
+      <% end %>
       <%= nav_link_to "Entries", entries_path %>
       <%= nav_link_to "Imports", imports_path %>
       <%= button_to "Sign out", session_path, method: :delete,

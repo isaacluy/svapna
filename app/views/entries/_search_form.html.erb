@@ -1,0 +1,53 @@
+<%= form_with url: entries_path, method: :get, class: "space-y-3" do |f| %>
+  <div class="flex gap-2">
+    <%= search_field_tag :q, search.query, autocomplete: "off",
+          placeholder: "Search entries…",
+          class: "field flex-1" %>
+    <%= submit_tag "Search", class: "btn btn-primary" %>
+  </div>
+
+  <details class="group" <%= "open" if search.filtered? %>>
+    <summary class="cursor-pointer list-none text-xs text-ink-faint select-none hover:text-ink">
+      <span class="group-open:hidden">Filters</span>
+      <span class="hidden group-open:inline">Filters</span>
+    </summary>
+
+    <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div>
+        <%= label_tag :tag, "Tag", class: "label" %>
+        <%= select_tag :tag,
+              options_for_select([ [ "Any", "" ] ] + search.tag_facets.map { |name, n| [ "#{name} (#{n})", name ] }, search.tag),
+              class: "field" %>
+      </div>
+
+      <div>
+        <%= label_tag :source, "Source note", class: "label" %>
+        <%= select_tag :source,
+              options_for_select([ [ "Any", "" ] ] + search.sources, search.source),
+              class: "field" %>
+      </div>
+
+      <div>
+        <%= label_tag :from, "From", class: "label" %>
+        <%= date_field_tag :from, search.from, class: "field" %>
+      </div>
+
+      <div>
+        <%= label_tag :to, "To", class: "label" %>
+        <%= date_field_tag :to, search.to, class: "field" %>
+      </div>
+
+      <div class="sm:col-span-2 lg:col-span-4">
+        <%= label_tag :status, "Include", class: "label" %>
+        <div class="flex flex-wrap gap-4 text-sm">
+          <% [ [ "Published only", "published" ], [ "Drafts only", "draft" ], [ "Everything", "all" ] ].each do |label, value| %>
+            <label class="flex items-center gap-2">
+              <%= radio_button_tag :status, value, search.status == value %>
+              <%= label %>
+            </label>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </details>
+<% end %>

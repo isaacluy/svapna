@@ -11,11 +11,23 @@ class EntriesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
-  test "index lists entries newest first" do
+  test "index lists published entries newest first" do
     get entries_path
 
     assert_response :success
-    assert_select "li", minimum: 3
+    assert_select "li", 2, "the draft fixture is excluded by default"
+  end
+
+  test "index says so when drafts are hidden" do
+    get entries_path
+
+    assert_select "p", /1 draft hidden/
+  end
+
+  test "index can include drafts" do
+    get entries_path(status: "all")
+
+    assert_select "li", 3
   end
 
   test "show renders the body with paragraphs preserved" do

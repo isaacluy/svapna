@@ -1,12 +1,9 @@
 class EntriesController < ApplicationController
   before_action :set_entry, only: %i[show edit update destroy]
 
-  # Plain listing for now. Real pagination and filtering arrive with search in M5.
-  PAGE_SIZE = 50
-
+  # Browse and search are the same page: an empty query simply lists everything.
   def index
-    @entries = Entry.chronological.limit(PAGE_SIZE)
-    @total = Entry.count
+    @search = EntrySearch.new(search_params)
   end
 
   def show
@@ -49,5 +46,9 @@ class EntriesController < ApplicationController
 
     def entry_params
       params.expect(entry: %i[body written_on position language status source])
+    end
+
+    def search_params
+      params.permit(:q, :tag, :source, :from, :to, :status, :page)
     end
 end

@@ -1,0 +1,23 @@
+<%# An entry in a result list. Shows the highlighted snippet when searching,
+    and the plain excerpt when just browsing. %>
+<li>
+  <%= link_to entry_path(result), class: "block py-5 -mx-3 px-3 rounded-lg hover:bg-surface-sunk" do %>
+    <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+      <span class="font-serif text-lg font-medium"><%= entry_date(result) %></span>
+
+      <% if result.draft? %><span class="tag">draft</span><% end %>
+      <% result.tags.each do |tag| %><%= tag_pill(tag) %><% end %>
+      <% if result.source.present? %>
+        <span class="ml-auto text-xs text-ink-faint"><%= result.source %></span>
+      <% end %>
+    </div>
+
+    <p class="mt-1.5 font-serif text-[0.9375rem] leading-relaxed text-ink-muted [&_mark]:bg-accent-soft [&_mark]:text-ink [&_mark]:rounded-sm [&_mark]:px-0.5">
+      <% if (snippet = highlights[result.id]) %>
+        <%= highlighted(snippet) %>
+      <% else %>
+        <%= result.excerpt %>
+      <% end %>
+    </p>
+  <% end %>
+</li>
