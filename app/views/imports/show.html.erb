@@ -1,31 +1,37 @@
-<div class="mx-auto max-w-2xl px-4 py-12">
-  <%= link_to "← Imports", imports_path, class: "text-sm underline" %>
+<% content_for :title, @import.to_s %>
 
-  <h1 class="mt-6 text-2xl font-semibold tracking-tight"><%= @import.to_s %></h1>
-  <p class="mt-1 text-sm text-gray-500">
+<div class="mx-auto max-w-3xl px-5 py-10">
+  <%= link_to "← Imports", imports_path, class: "text-sm text-ink-faint hover:text-ink" %>
+
+  <h1 class="mt-6 font-serif text-3xl font-medium tracking-tight">
+    <%= @import.source.presence || @import.filename.presence || "Import ##{@import.id}" %>
+  </h1>
+  <p class="mt-2 text-sm text-ink-faint">
     <%= pluralize(@import.entries_count, "entry") %> imported
     <% if @import.duplicate_count.positive? %>· <%= @import.duplicate_count %> already present<% end %>
     <% if @import.filename.present? %>· <%= @import.filename %><% end %>
   </p>
 
   <% if @import.empty? %>
-    <p class="mt-6 rounded-md bg-amber-50 p-4 text-sm text-amber-900">
-      Nothing was imported. The most likely cause is that the divider lines were
-      not recognised — they need to be a line of three or more dashes.
-    </p>
+    <div class="card mt-8 border-marker/30 bg-marker-soft px-5 py-4">
+      <p class="text-sm text-marker">
+        Nothing was imported. The most likely cause is that the divider lines were
+        not recognised — they need to be a line of three or more dashes.
+      </p>
+    </div>
   <% end %>
 
   <% if @import.parse_errors.any? %>
-    <div class="mt-6 rounded-md bg-amber-50 p-4">
-      <h2 class="text-sm font-medium text-amber-900">
+    <div class="card mt-8 bg-marker-soft px-5 py-4">
+      <h2 class="text-sm font-medium text-marker">
         <%= pluralize(@import.parse_errors.size, "section") %> skipped
       </h2>
-      <ul class="mt-2 space-y-2 text-sm text-amber-900">
+      <ul class="mt-3 space-y-2.5 text-sm text-marker">
         <% @import.parse_errors.each do |problem| %>
           <li>
             <%= problem["reason"] %>
             <% if problem["preview"].present? %>
-              <span class="block text-xs opacity-75"><%= problem["preview"] %></span>
+              <span class="mt-0.5 block font-mono text-xs opacity-70"><%= problem["preview"] %></span>
             <% end %>
           </li>
         <% end %>
@@ -34,29 +40,20 @@
   <% end %>
 
   <% if @entries.any? %>
-    <h2 class="mt-10 text-sm font-medium text-gray-500">Entries</h2>
-    <ul class="mt-2 divide-y divide-gray-200">
-      <% @entries.each do |entry| %>
-        <li class="py-4">
-          <%= link_to entry_path(entry), class: "block" do %>
-            <div class="flex items-baseline gap-2">
-              <span class="font-medium"><%= entry.to_s %></span>
-              <% entry.tags.each do |tag| %>
-                <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700"><%= tag %></span>
-              <% end %>
-            </div>
-            <p class="mt-1 text-sm text-gray-600"><%= entry.excerpt %></p>
-          <% end %>
-        </li>
-      <% end %>
+    <h2 class="mt-12 text-xs font-semibold tracking-wide text-ink-faint uppercase">Entries</h2>
+    <ul class="mt-1 divide-y divide-rule">
+      <%= render @entries %>
     </ul>
   <% end %>
 
   <% if @import.undoable? %>
-    <div class="mt-10">
+    <div class="mt-12 border-t border-rule pt-5">
       <%= button_to "Undo this import", @import, method: :delete,
-            class: "text-sm text-red-700 underline",
+            class: "btn btn-danger text-sm",
             form: { data: { turbo_confirm: "Delete the #{@import.entries_count} entries this import created?" } } %>
+      <p class="mt-1 text-xs text-ink-faint">
+        Deletes only the entries this import created. Entries you wrote here are untouched.
+      </p>
     </div>
   <% end %>
 </div>
