@@ -1,0 +1,122 @@
+<% content_for :title, "Insights" %>
+
+<div class="mx-auto max-w-3xl px-5 py-10">
+  <h1 class="font-serif text-3xl font-medium tracking-tight">Insights</h1>
+  <p class="mt-2 max-w-measure text-sm leading-relaxed text-ink-muted">
+    Word counts over whichever entries the filters below select — all of them, or
+    just a handful.
+  </p>
+
+  <%# Same filters as the entry list, plus the two that only matter here. %>
+  <div class="mt-7">
+    <%= form_with url: insights_path, method: :get, class: "space-y-3" do %>
+      <div class="flex gap-2">
+        <%= search_field_tag :q, @search.query, autocomplete: "off",
+              placeholder: "Limit to entries matching…", class: "field flex-1" %>
+        <%= submit_tag "Apply", class: "btn btn-primary" %>
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <%= label_tag :tag, "Tag", class: "label" %>
+          <%= select_tag :tag, options_for_select([ [ "Any", "" ] ] + @search.tag_facets.keys, @search.tag), class: "field" %>
+        </div>
+        <div>
+          <%= label_tag :source, "Source note", class: "label" %>
+          <%= select_tag :source, options_for_select([ [ "Any", "" ] ] + @search.sources, @search.source), class: "field" %>
+        </div>
+        <div>
+          <%= label_tag :from, "From", class: "label" %>
+          <%= date_field_tag :from, @search.from, class: "field" %>
+        </div>
+        <div>
+          <%= label_tag :to, "To", class: "label" %>
+          <%= date_field_tag :to, @search.to, class: "field" %>
+        </div>
+        <div>
+          <%= label_tag :stopwords, "Common words", class: "label" %>
+          <%= select_tag :stopwords,
+                options_for_select([ [ "Excluded", "auto" ], [ "Included", "none" ] ], @stopword_mode),
+                class: "field" %>
+        </div>
+        <div>
+          <%= label_tag :limit, "Show", class: "label" %>
+          <%= select_tag :limit, options_for_select([ 20, 40, 100, 250 ].map { |n| [ "top #{n}", n ] }, @limit), class: "field" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @frequency.entries_count.zero? %>
+    <div class="card mt-8 px-6 py-12 text-center">
+      <p class="font-serif text-lg">Nothing selected.</p>
+      <p class="mt-2 text-sm text-ink-muted">
+        <%= link_to "Clear the filters", insights_path, class: "link" %> or
+        <%= link_to "import some notes", new_import_path, class: "link" %>.
+      </p>
+    </div>
+  <% else %>
+    <%# The headline is a number, so it gets a tile rather than a chart. %>
+    <dl class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <% [
+           [ "Entries", number_with_delimiter(@frequency.entries_count) ],
+           [ "Words shown", number_with_delimiter(@frequency.distinct_words) ],
+           [ "Occurrences", number_with_delimiter(@frequency.total_occurrences) ],
+           [ "Most repeated", @frequency.busiest&.word || "—" ]
+         ].each do |label, value| %>
+        <div class="card px-4 py-3">
+          <dt class="text-xs text-ink-faint"><%= label %></dt>
+          <dd class="mt-1 truncate font-serif text-lg font-medium" title="<%= value %>"><%= value %></dd>
+        </div>
+      <% end %>
+    </dl>
+
+    <p class="mt-6 text-sm text-ink-faint">
+      <%= search_summary(@search) %>
+      <% if @stopword_mode == "auto" && @frequency.stopword_list.any? %>
+        · <%= pluralize(@frequency.stopword_list.size, "common word") %> excluded
+        (<%= @frequency.languages.join(", ") %>)
+      <% end %>
+      <% if @search.any_criteria? %>
+        · <%= link_to "Clear", insights_path, class: "link" %>
+      <% end %>
+    </p>
+
+    <% if @frequency.empty? %>
+      <p class="mt-8 text-sm text-ink-muted">Every word in this selection is a common word.</p>
+    <% else %>
+      <%# A real table, so the numbers are readable without the bars. %>
+      <table class="mt-4 w-full">
+        <caption class="sr-only">
+          Words by number of occurrences, most frequent first
+        </caption>
+        <thead>
+          <tr class="border-b border-rule text-left text-xs text-ink-faint">
+            <th scope="col" class="w-1/3 pb-2 font-medium">Word</th>
+            <th scope="col" class="pb-2 font-medium">Occurrences</th>
+            <th scope="col" class="pb-2 text-right font-medium">Entries</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% top = @frequency.busiest.occurrences %>
+          <% @frequency.rows.each do |row| %>
+            <tr class="meter-row border-b border-rule/60">
+              <th scope="row" class="py-2 pr-3 text-left font-serif text-[0.9375rem] font-normal">
+                <%= link_to row.word, entries_path(q: row.word), class: "hover:underline" %>
+              </th>
+              <td class="py-2 pr-3">
+                <div class="meter" title="<%= row.occurrences %> occurrences across <%= pluralize(row.entries, "entry") %>">
+                  <span class="meter-fill" style="width: <%= (row.occurrences.to_f / top * 100).round(1) %>%"></span>
+                  <span class="meter-value"><%= number_with_delimiter(row.occurrences) %></span>
+                </div>
+              </td>
+              <td class="py-2 text-right text-[0.8125rem] text-ink-muted tabular-nums">
+                <%= number_with_delimiter(row.entries) %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  <% end %>
+</div>

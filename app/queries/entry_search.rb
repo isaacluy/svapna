@@ -60,6 +60,11 @@ class EntrySearch
 
   def total = @total ||= scope.count
 
+  # The filtered relation, for callers that aggregate rather than paginate
+  # (Insights). Reordered off: ts_stat only needs the rows, and a rank
+  # expression in the ORDER BY would have to be carried into the subquery.
+  def scope_for_analytics = scope.reorder(nil)
+
   def entries = @entries ||= paginated.to_a
 
   def total_pages = [ (total / PER_PAGE.to_f).ceil, 1 ].max
