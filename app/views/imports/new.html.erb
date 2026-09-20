@@ -1,0 +1,30 @@
+<div class="mx-auto max-w-2xl px-4 py-12">
+  <%= link_to "← Imports", imports_path, class: "text-sm underline" %>
+  <h1 class="mt-6 text-2xl font-semibold tracking-tight">Import from Apple Notes</h1>
+
+  <p class="mt-2 text-sm text-gray-600">
+    Paste a note, or choose one or more exported <code>.txt</code> files.
+    Each file becomes its own import you can undo on its own.
+    Importing the same note twice is safe — entries already present are skipped.
+  </p>
+
+  <%= form_with url: imports_path, method: :post, multipart: true, class: "mt-8 space-y-6" do |f| %>
+    <div>
+      <%= label_tag "import[files]", "Files", class: "block text-sm font-medium" %>
+      <%= file_field_tag "import[files][]", multiple: true, accept: ".txt,text/plain",
+            class: "mt-1 block w-full text-sm" %>
+    </div>
+
+    <div>
+      <%= label_tag "import[text]", "Or paste a note", class: "block text-sm font-medium" %>
+      <%= text_area_tag "import[text]", nil, rows: 14, spellcheck: false,
+            placeholder: "Sueños p.14\n———\n2026/09/18\n\n…",
+            class: "mt-1 block w-full rounded-md border-gray-300 font-mono text-sm" %>
+      <p class="mt-1 text-xs text-gray-500">
+        Include the note's title line — it is stored as the source of every entry in it.
+      </p>
+    </div>
+
+    <%= submit_tag "Import", class: "rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white" %>
+  <% end %>
+</div>

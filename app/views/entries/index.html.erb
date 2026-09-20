@@ -1,7 +1,11 @@
 <div class="mx-auto max-w-2xl px-4 py-12">
   <div class="flex items-baseline justify-between">
     <h1 class="text-2xl font-semibold tracking-tight">Entries</h1>
-    <%= link_to "New entry", new_entry_path, class: "text-sm underline" %>
+    <span class="text-sm">
+      <%= link_to "Import", new_import_path, class: "underline" %>
+      ·
+      <%= link_to "New entry", new_entry_path, class: "underline" %>
+    </span>
   </div>
 
   <p class="mt-1 text-sm text-gray-500">
@@ -9,7 +13,9 @@
   </p>
 
   <% if @entries.empty? %>
-    <p class="mt-8 text-gray-600">Nothing here yet. The importer arrives in M3.</p>
+    <p class="mt-8 text-gray-600">
+      Nothing here yet. <%= link_to "Import from Apple Notes", new_import_path, class: "underline" %>.
+    </p>
   <% else %>
     <ul class="mt-8 divide-y divide-gray-200">
       <% @entries.each do |entry| %>
