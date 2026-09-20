@@ -7,6 +7,11 @@ class Tag < ApplicationRecord
   validates :name, presence: true, uniqueness: true
 
   scope :alphabetical, -> { order(:name) }
+  # A tag can outlive its last entry (undoing an import leaves the vocabulary
+  # behind on purpose), so anything user-facing lists only tags in use.
+  scope :in_use, -> { where(id: Tagging.select(:tag_id)) }
+
+  def entries_count = taggings.count
 
   def self.normalize(name)
     name.to_s.strip.downcase
