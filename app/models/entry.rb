@@ -20,6 +20,9 @@ class Entry < ApplicationRecord
   # before_save rather than before_validation: the importer may write with
   # validate: false, and body_digest is NOT NULL.
   before_save :assign_body_digest
+  # A blank source means "written here". Left as "", it would appear as an empty
+  # option in the source filter and break `where.not(source: nil)`.
+  before_save -> { self.source = source.presence }
 
   # Tags are edited as a comma-separated string. Applied after save so a new
   # entry has an id to attach taggings to.
@@ -41,6 +44,10 @@ class Entry < ApplicationRecord
   def to_s
     I18n.l(written_on, format: :long)
   end
+
+  # Rough, and deliberately so: it is a writing aid, not a statistic.
+  # Analytics::WordFrequency is the accurate count.
+  def word_count = body.to_s.scan(/[[:alnum:]]+/).size
 
   def excerpt(limit: 160)
     body.to_s.squish.truncate(limit)
