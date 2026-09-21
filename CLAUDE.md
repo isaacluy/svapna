@@ -2,7 +2,7 @@
 
 Private, password-protected journal. Entries are imported from Apple Notes, then searched, tagged, and analysed (word frequency etc.). Long-term the app should replace Apple Notes as the place entries get written.
 
-**Status:** M7 complete — everything through insights. Both of the app's reasons for existing (accurate search, word analysis) now work. See the milestone table at the bottom.
+**Status:** M8 complete — everything through the composer. Svapna can now be written in, not just imported into. See the milestone table at the bottom.
 
 ## Stack
 
@@ -29,6 +29,7 @@ bin/d c                  # rails console
 bin/d r db:migrate       # any bin/rails command
 bin/d g model Entry      # rails generate
 bin/d t                  # test suite
+bin/d sys                # system tests (starts the browser container)
 bin/d ci                 # full pipeline: setup, rubocop, audits, tests, seeds
 bin/d add <gem>          # bundle add + restart (no rebuild needed)
 bin/d psql               # psql into the db container
@@ -191,6 +192,25 @@ Reading-first, mobile-first. Everything lives in `app/assets/tailwind/applicatio
 
 **Flash messages render only in `layouts/_flash`.** Views must not render their own — that was a real bug (each message appeared twice on the auth pages). `test/controllers/flash_rendering_test.rb` counts `[role=status]` nodes so a reintroduction fails; a `assert_select "div", /text/` assertion would not catch it.
 
+## Composer
+
+`/entries/new` and `/entries/:id/edit` are the writing surface. **It is a plain form that works without JavaScript** — a real submit button, real validations — and autosave is layered on top. If the fetch fails the status line says so and the button still works.
+
+- `autosave_controller.js` debounces on `input`/`change` (2s) and flushes on `visibilitychange`, so a pending save is not lost on navigation
+- **Nothing is autosaved while the body is blank.** The body is required, so it would only ever produce a validation error — and it stops empty drafts accumulating
+- The first save POSTs; the response carries `update_url`, `edit_url` and `publish_url`, after which the controller switches to PATCH, rewrites the publish form's action and `history.replaceState`s to the edit URL. Otherwise a second keystroke would create a second entry
+- **The controller sits on a wrapper `div`, not the form.** Publish must be its own form (different action and verb) so it cannot nest inside the entry form, and Stimulus only sees targets inside its own element. With the controller on the form, autosave looks fine while Publish silently never activates — which is exactly what happened, and what `composer_test.rb` now guards
+- Saving a draft returns to the composer; saving a published entry goes to the reading view. Publishing is its own request, so it can never be mistaken for a save
+- Drafts are reachable from `/entries/drafts`, the home page's "Continue writing", and the hidden-drafts link on the entry list
+
+### System tests
+
+`bin/d sys` starts a `selenium` compose service (profile `test`, so `bin/d t` never touches it) and runs `test/system`. Nothing is installed on the host and nothing extra goes into the app image.
+
+- They run **serially** (`parallelize(workers: 1)`): the browser reaches the app on a fixed port, and parallel workers would fight over it — the browser then talks to another worker's database and fails in ways that look like the feature is broken
+- `Capybara.app_host` is this container's **own private IP**, not the service name: a `docker compose run` container gets a generated name that `selenium` cannot resolve
+- **`click_on` does not wait for the navigation it triggers.** Follow it with an assertion on the resulting page (`assert_text "Sign out"`) before doing anything else, or the next step races the in-flight request. Two of the three failures while writing these were this, not the app
+
 ## Conventions
 
 - Keep it boring: standard Rails, service objects only for the importer and analytics, a query object for search
@@ -219,6 +239,6 @@ Build **one milestone at a time**, then stop for review.
 | M5 | Search: query object, filters, `ts_headline`, results UI | **done** |
 | M6 | Tags: browsing, filtering by tag, "did you mean?" | **done** |
 | M7 | Insights: word frequency, stopwords | **done** |
-| M8 | Composer: authoring, autosave, drafts | next |
-| M9 | Deploy to Coolify (can be pulled forward any time) | |
+| M8 | Composer: authoring, autosave, drafts | **done** |
+| M9 | Deploy to Coolify (can be pulled forward any time) | next |
 | M10 | Hotwire Native shell | |
