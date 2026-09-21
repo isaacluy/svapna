@@ -2,7 +2,7 @@
 
 Private, password-protected journal. Entries are imported from Apple Notes, then searched, tagged, and analysed (word frequency etc.). Long-term the app should replace Apple Notes as the place entries get written.
 
-**Status:** M8 complete — everything through the composer. Svapna can now be written in, not just imported into. See the milestone table at the bottom.
+**Status:** M8 complete — everything through the composer. Svapna can now be written in, not just imported into. **M9 (deploy) and M10 (Hotwire Native) are on hold** until Coolify is set up on Hetzner; the notes for picking them up are at the bottom. See the milestone table.
 
 ## Stack
 
@@ -14,7 +14,7 @@ Private, password-protected journal. Entries are imported from Apple Notes, then
 - **Auth**: Rails 8 built-in authentication generator (`User` + `Session`, bcrypt). No public signup — create accounts with `bin/d r user:create EMAIL=... PASSWORD=...` (`user:list` to see them)
 - **Search**: hand-written query object. **Not `pg_search`** — it supports neither multiple dictionaries in one query nor per-row language configs
 - **`schema_format = :sql`** — `db/structure.sql` is the schema of record. `schema.rb` cannot represent text search configurations, custom functions or generated columns. Never reintroduce it
-- **Deploy**: Coolify (Git + Dockerfile build pack). Not set up yet. Stay portable: 12-factor config, only trusted extensions, so Railway/Heroku remain fallbacks
+- **Deploy**: Coolify (Git + Dockerfile build pack). **Coolify is not set up on Hetzner yet, so M9 is on hold.** Stay portable: 12-factor config, only trusted extensions, so Railway/Heroku remain fallbacks
 - **Mobile (future)**: Hotwire Native over this same app. Keep every screen server-rendered and URL-addressable
 
 ## Golden rule: nothing is installed locally
@@ -240,5 +240,48 @@ Build **one milestone at a time**, then stop for review.
 | M6 | Tags: browsing, filtering by tag, "did you mean?" | **done** |
 | M7 | Insights: word frequency, stopwords | **done** |
 | M8 | Composer: authoring, autosave, drafts | **done** |
-| M9 | Deploy to Coolify (can be pulled forward any time) | next |
-| M10 | Hotwire Native shell | |
+| M9 | Deploy to Coolify (Hetzner) | **on hold** — see below |
+| M10 | Hotwire Native shell (iOS only) | **on hold** — see below |
+
+## On hold: M9 (deploy) and M10 (Hotwire Native)
+
+Both wait until Coolify exists on Hetzner. **Do not start either unprompted.** M0–M8 are done; everything below is prep for picking them up.
+
+### Decisions already made
+
+- **Merging.** Isaac merges everything into `main` by hand after review. The branches are stacked (`main` ← `epic/kick-off` ← `feat/m0` ← … ← `feat/m8`), so `feat/m8` contains all of M0–M8. `main` is still at the first `CLAUDE.md` commit. If PRs are squash-merged, retarget each one at `main` once the one below it has merged, or merge `feat/m8` in a single go
+- **SMTP is required in production**, so the password-reset email is really sent. It is one user (Isaac) for now, but it may become a full multi-user app, so do this properly rather than falling back on `user:create`
+- **iOS only.** The first build is a personal build on Isaac's own device; the Apple Developer account comes later
+
+### M9 pickup notes
+
+**SMTP** (nothing is configured yet)
+- `config/environments/production.rb` has `smtp_settings` commented out and no `delivery_method`. Read the settings from env vars (`SMTP_ADDRESS`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`), not credentials: config is env-only and `master.key` is not in the repo or the image
+- **`ApplicationMailer` still sends from `from@example.com`.** Change it to a real address on a domain Isaac controls (make it an env var, e.g. `MAILER_FROM`), or providers will reject the mail
+- Use a transactional provider and set SPF, DKIM and DMARC on the sending domain. Hetzner Cloud restricts outbound port 25 by default (verify), so use 587 or 465
+- `PasswordsController` uses `deliver_later`, and the queue is Rails' default in-process async one: a failed send leaves only a log line and pending mail is lost on restart. Fine for one user; revisit (Solid Queue, or `deliver_now` for the reset mail) if it becomes multi-user
+- The reset link is built from `APP_HOST` over https. Send a real reset email end to end before calling M9 done
+
+**The data is not user-scoped.** Entries, tags, imports and the search facets have no `user_id`; `Tag.name` is globally unique; any signed-in user would see every entry. That is fine for one person. **Do not create a second account until this changes.** Going multi-user means scoping entries, tags and imports to a user, per-user tag uniqueness, scoping search (facets, sources), analytics and the dedupe index, and adding signup with email confirmation. Treat it as its own milestone
+
+**Deploy checklist**
+1. Merge to `main` (or point Coolify at `feat/m8` meanwhile), then re-verify the image with `bin/d prod up --build`; it last passed at M0
+2. Coolify resources: the app (GitHub repo, Dockerfile build pack; the repo is private, so give Coolify access) and a **Postgres 17** database. The image's client is 17, and `structure.sql` loads through `psql`
+3. The M2 migration creates the `unaccent` and `pg_trgm` extensions and the text search configs. Both extensions are trusted, so an owner account should be enough, but that is untested on Coolify
+4. Env vars: `DATABASE_URL`, `SECRET_KEY_BASE`, `APP_HOST`, the `SMTP_*` set and `MAILER_FROM`. Optional: `RAILS_MAX_THREADS`, `WEB_CONCURRENCY`, `RAILS_LOG_LEVEL`
+5. Domain and TLS through Coolify; container port is 80 (Thruster); health check `/up`. `config.hosts` is not restricted, and if it is ever enabled, exclude `/up`
+6. Create the first user from Coolify's terminal: `bin/rails user:create EMAIL=... PASSWORD=...`
+7. **Turn on Postgres backups.** This is personal journal data
+8. `config/cable.yml` uses the Redis adapter in production while the `redis` gem is commented out. Nothing uses Action Cable, so it may never matter, but check it in step 1 and either switch it to `async` or drop Action Cable
+9. Cache is Rails' default per-container store, so `Analytics::WordFrequency` results are recomputed after a redeploy. Harmless
+10. Import the real notes last, one note first, reading the result before the rest
+
+### M10 pickup notes (iOS)
+
+- **Xcode has to be on the Mac.** That is the one exception to "nothing is installed locally", which covers Ruby, Node and Postgres. The Hotwire Native iOS shell is a Swift project outside Docker
+- **Personal build first.** A free Apple ID builds to your own device with a short-lived provisioning profile (roughly 7 days), so the app needs re-installing from Xcode. TestFlight or the App Store need the paid Developer account, which comes later
+- **The dev server can be used first.** The simulator can talk to `http://localhost:3000`, so M10 is not strictly blocked on M9. A real device needs a reachable URL: the deployed one, or the Mac's LAN address, which needs an App Transport Security exception for plain http
+- **Server side work:** serve a path configuration JSON (which screens push, which are modals, how the composer behaves); detect the native app's user agent so the web header gives way to native navigation; check `allow_browser versions: :modern` accepts the web view's user agent
+- **Search needs a native way in.** The header's search box is hidden below the `sm` breakpoint, and a native tab bar or search field has to replace the header navigation
+- The composer's autosave `fetch` calls and the signed session cookie should work in the web view, but test both there
+- Keep to the existing rules: screens stay server-rendered and URL-addressable, 44px targets, nothing hover-only, and **no JSON API** unless a native feature needs one
