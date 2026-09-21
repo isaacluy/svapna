@@ -41,6 +41,9 @@ services:
       # Rails binds to localhost by default, which is unreachable through a
       # published port.
       BINDING: "0.0.0.0"
+      # System tests drive Chromium in the selenium service; Capybara has to
+      # bind to the container's interface so the browser can reach it.
+      SELENIUM_REMOTE_URL: http://selenium:4444
     volumes:
       - .:/rails
       - bundle:/usr/local/bundle
@@ -51,6 +54,12 @@ services:
         condition: service_healthy
     stdin_open: true
     tty: true
+
+  # Only for system tests: bin/d t never starts it, `bin/d sys` does.
+  selenium:
+    image: selenium/standalone-chromium:latest
+    shm_size: 2gb
+    profiles: [ test ]
 
 volumes:
   pgdata:
