@@ -222,7 +222,7 @@ Reading-first, mobile-first. Everything lives in `app/assets/tailwind/applicatio
 
 ## Git
 
-- Default branch `main`; work on `epic/*` / `feat/*`. Currently on `feat/m1`
+- Default branch `main`; work on `epic/*` / `feat/*`. Currently on `feat/m8`
 - Small, focused commits. Do not commit unless asked
 
 ## Milestones
