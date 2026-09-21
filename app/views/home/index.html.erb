@@ -7,14 +7,36 @@
   </p>
 
   <div class="mt-10 flex flex-wrap gap-3">
-    <%= link_to "Read entries", entries_path, class: "btn btn-primary" %>
+    <%= link_to "Write", new_entry_path, class: "btn btn-primary" %>
+    <%= link_to "Read entries", entries_path, class: "btn btn-quiet" %>
     <%= link_to "Import notes", new_import_path, class: "btn btn-quiet" %>
   </div>
+
+  <% if @drafts.any? %>
+    <h2 class="mt-16 flex items-baseline justify-between text-xs font-semibold tracking-wide text-ink-faint uppercase">
+      Continue writing
+      <%= link_to "All drafts", drafts_entries_path, class: "text-xs font-normal normal-case tracking-normal link" %>
+    </h2>
+    <ul class="mt-1 divide-y divide-rule">
+      <% @drafts.each do |draft| %>
+        <li>
+          <%= link_to edit_entry_path(draft), class: "block py-4 -mx-3 px-3 rounded-lg hover:bg-surface-sunk" do %>
+            <div class="flex items-baseline gap-2.5">
+              <span class="font-serif text-lg font-medium"><%= entry_date(draft) %></span>
+              <span class="tag">draft</span>
+              <span class="ml-auto text-xs text-ink-faint"><%= pluralize(draft.word_count, "word") %></span>
+            </div>
+            <p class="mt-1 font-serif text-[0.9375rem] leading-relaxed text-ink-muted"><%= draft.excerpt %></p>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
 
   <% if @recent.any? %>
     <h2 class="mt-16 text-xs font-semibold tracking-wide text-ink-faint uppercase">Recent</h2>
     <ul class="mt-1 divide-y divide-rule">
-      <%= render @recent %>
+      <%= render partial: "entries/result", collection: @recent, as: :result, locals: { highlights: {} } %>
     </ul>
   <% end %>
 </div>

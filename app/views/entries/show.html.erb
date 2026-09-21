@@ -27,7 +27,10 @@
   </div>
 
   <footer class="mt-14 flex items-center gap-5 border-t border-rule pt-5 text-sm">
-    <%= link_to "Edit", edit_entry_path(@entry), class: "link" %>
+    <%= link_to @entry.draft? ? "Keep writing" : "Edit", edit_entry_path(@entry), class: "link" %>
+    <% if @entry.draft? %>
+      <%= button_to "Publish", publish_entry_path(@entry), method: :patch, class: "btn btn-primary" %>
+    <% end %>
     <%= button_to "Delete", @entry, method: :delete,
           class: "btn btn-danger text-sm",
           form: { data: { turbo_confirm: "Delete this entry? This cannot be undone." } } %>
