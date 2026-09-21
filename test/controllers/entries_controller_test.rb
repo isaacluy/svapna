@@ -38,15 +38,25 @@ class EntriesControllerTest < ActionDispatch::IntegrationTest
     assert_select "p", text: /Soñaba mucho/
   end
 
-  test "creates an entry" do
+  test "creates a draft and stays in the composer" do
     assert_difference -> { Entry.count }, 1 do
       post entries_path, params: { entry: {
         body: "Una entrada nueva", written_on: "2026-09-19", language: "es", status: "draft"
       } }
     end
 
+    entry = Entry.order(:created_at).last
+
+    assert_equal "Una entrada nueva", entry.body
+    assert_redirected_to edit_entry_path(entry), "a long writing session should stay put"
+  end
+
+  test "creating a published entry goes to the reading view" do
+    post entries_path, params: { entry: {
+      body: "Ya terminada", written_on: "2026-09-19", language: "es", status: "published"
+    } }
+
     assert_redirected_to entry_path(Entry.order(:created_at).last)
-    assert_equal "Una entrada nueva", Entry.order(:created_at).last.body
   end
 
   test "rejects an invalid entry without creating it" do
