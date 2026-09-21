@@ -304,6 +304,16 @@
     }
   }
 
+  /* Autosave state. Tone is set by the Stimulus controller so the wording and
+     the styling stay in their own places. */
+  .composer-status {
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-faint);
+  }
+  .composer-status[data-tone="ok"] { color: var(--ink-muted); }
+  .composer-status[data-tone="warn"] { color: var(--danger); }
+
   .card {
     background-color: var(--surface);
     border: 1px solid var(--rule);

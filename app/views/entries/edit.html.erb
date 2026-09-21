@@ -1,8 +1,5 @@
-<% content_for :title, "Edit entry" %>
+<% content_for :title, @entry.draft? ? "Draft" : "Edit entry" %>
 
-<div class="mx-auto max-w-3xl px-5 py-10">
-  <h1 class="font-serif text-3xl font-medium tracking-tight">
-    Edit <span class="text-ink-muted"><%= entry_date(@entry) %></span>
-  </h1>
-  <div class="mt-8"><%= render "form", entry: @entry %></div>
+<div class="mx-auto max-w-measure px-5 py-10">
+  <%= render "composer", entry: @entry %>
 </div>

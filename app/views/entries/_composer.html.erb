@@ -1,0 +1,94 @@
+<%# The writing surface. Works without JavaScript -- Save is a real submit
+    button -- and the autosave controller is layered on top of that. %>
+<div data-controller="autosave"
+     data-action="input->autosave#schedule change->autosave#schedule">
+
+<%= form_with model: entry, class: "flex min-h-[70dvh] flex-col",
+      data: { autosave_target: "form" } do |f| %>
+
+  <% if entry.errors.any? %>
+    <div class="mb-5 rounded-lg bg-marker-soft px-4 py-3 text-sm text-danger">
+      <ul class="list-disc space-y-1 pl-4">
+        <% entry.errors.full_messages.each do |message| %><li><%= message %></li><% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-rule pb-3">
+    <div class="flex items-center gap-3">
+      <%= f.label :written_on, "Date", class: "sr-only" %>
+      <%= f.date_field :written_on, class: "field !min-h-0 w-auto py-1.5 text-sm" %>
+      <% if entry.persisted? && entry.draft? %>
+        <span class="tag">draft</span>
+      <% end %>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <%# Tone is set by the controller; styling lives in the stylesheet. %>
+      <span class="composer-status" data-autosave-target="status" role="status" aria-live="polite">
+        <%= entry.persisted? ? "Saved" : "Not saved yet" %>
+      </span>
+      <%= f.submit entry.draft? ? "Save draft" : "Save", class: "btn btn-quiet" %>
+    </div>
+  </div>
+
+  <%= f.label :body, "Entry", class: "sr-only" %>
+  <%= f.text_area :body,
+        data: { autosave_target: "body" },
+        autofocus: entry.new_record?,
+        spellcheck: true,
+        placeholder: "Anoche soñé…",
+        class: "prose-entry mt-6 w-full flex-1 resize-none border-0 bg-transparent p-0 focus:outline-none" %>
+
+  <details class="mt-8 border-t border-rule pt-4" <%= "open" if entry.errors.any? %>>
+    <summary class="cursor-pointer list-none text-xs text-ink-faint select-none hover:text-ink">
+      Details
+    </summary>
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="sm:col-span-2">
+        <%= f.label :tag_list, "Tags", class: "label" %>
+        <%= f.text_field :tag_list, value: entry.tag_list, list: "known-tags",
+              autocomplete: "off", placeholder: "pesadilla, volar", class: "field" %>
+        <datalist id="known-tags">
+          <% Tag.in_use.alphabetical.each do |tag| %><option value="<%= tag.name %>"></option><% end %>
+        </datalist>
+      </div>
+
+      <div>
+        <%= f.label :language, class: "label" %>
+        <%= f.select :language, Entry::LANGUAGES.map { |l| [ l.upcase, l ] }, {}, class: "field" %>
+      </div>
+
+      <div>
+        <%= f.label :source, "Source note", class: "label" %>
+        <%= f.text_field :source, placeholder: "written here", class: "field" %>
+      </div>
+
+      <div>
+        <%= f.label :status, class: "label" %>
+        <%= f.select :status, Entry.statuses.keys.map { |s| [ s.humanize, s ] }, {}, class: "field" %>
+      </div>
+    </div>
+  </details>
+<% end %>
+
+<div class="mt-8 flex flex-wrap items-center gap-4 border-t border-rule pt-5 text-sm">
+  <%# Publishing is its own request, so it cannot be confused with a save.
+      Hidden until the entry exists, since it needs an id. %>
+  <span data-autosave-target="publish" <%= "hidden" unless entry.persisted? && entry.draft? %>>
+    <%= button_to "Publish", publish_entry_path(entry.persisted? ? entry : 0), method: :patch,
+          class: "btn btn-primary",
+          disabled: entry.new_record? %>
+  </span>
+
+  <% if entry.persisted? %>
+    <%= link_to "Read it", entry_path(entry), class: "link" %>
+    <%= button_to "Delete", entry, method: :delete,
+          class: "btn btn-danger ml-auto",
+          form: { data: { turbo_confirm: "Delete this entry? This cannot be undone." } } %>
+  <% else %>
+    <%= link_to "Cancel", entries_path, class: "text-ink-faint hover:text-ink" %>
+  <% end %>
+</div>
+</div>
