@@ -5,6 +5,7 @@
     <h1 class="font-serif text-3xl font-medium tracking-tight">Entries</h1>
 
     <div class="flex items-center gap-4 text-sm">
+      <%= link_to "Insights", insights_path(request.query_parameters.except("page")), class: "link" %>
       <%= link_to "Import", new_import_path, class: "link" %>
       <%= link_to "New entry", new_entry_path, class: "btn btn-primary" %>
     </div>
