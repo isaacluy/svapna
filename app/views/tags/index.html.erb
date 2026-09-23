@@ -1,0 +1,40 @@
+<% content_for :title, "Tags" %>
+
+<div class="mx-auto max-w-3xl px-5 py-10">
+  <h1 class="font-serif text-3xl font-medium tracking-tight">Tags</h1>
+
+  <% if @tags.empty? %>
+    <div class="card mt-8 px-6 py-12 text-center">
+      <p class="font-serif text-lg">No tags yet.</p>
+      <p class="mt-2 text-sm text-ink-muted">
+        Add them when you <%= link_to "edit an entry", entries_path, class: "link" %>,
+        or let the importer apply <span class="tag tag-marker">important</span> for you.
+      </p>
+    </div>
+  <% else %>
+    <ul class="mt-8 flex flex-wrap gap-2">
+      <% @tags.each do |tag| %>
+        <li>
+          <%= link_to entries_path(tag: tag.name),
+                class: "card flex items-baseline gap-2 px-3 py-2 hover:bg-surface-sunk" do %>
+            <span class="text-sm font-medium"><%= tag.name %></span>
+            <span class="text-xs text-ink-faint"><%= tag.entries_count %></span>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <% if @unused.any? %>
+    <div class="mt-12 border-t border-rule pt-5">
+      <h2 class="text-xs font-semibold tracking-wide text-ink-faint uppercase">Not in use</h2>
+      <p class="mt-2 text-sm text-ink-muted">
+        <%= safe_join(@unused.map { |tag| content_tag(:span, tag.name, class: "tag") }, " ") %>
+      </p>
+      <p class="mt-2 text-xs text-ink-faint">
+        Kept in case you want them again — undoing an import leaves its tags behind.
+        Remove them with <code>bin/d r tags:prune</code>.
+      </p>
+    </div>
+  <% end %>
+</div>

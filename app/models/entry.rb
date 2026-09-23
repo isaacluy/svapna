@@ -21,6 +21,10 @@ class Entry < ApplicationRecord
   # validate: false, and body_digest is NOT NULL.
   before_save :assign_body_digest
 
+  # Tags are edited as a comma-separated string. Applied after save so a new
+  # entry has an id to attach taggings to.
+  after_save :sync_tag_list, if: -> { @tag_list_assigned }
+
   validates :body, presence: true
   validates :written_on, presence: true
   validates :language, inclusion: { in: LANGUAGES }
@@ -48,6 +52,18 @@ class Entry < ApplicationRecord
     Digest::SHA256.hexdigest(body.to_s.gsub(/\s+/, " ").strip.downcase)
   end
 
+  # Comma-separated, for the form field.
+  def tag_list
+    return @tag_list if @tag_list_assigned
+
+    tags.sort_by(&:name).map(&:name).join(", ")
+  end
+
+  def tag_list=(value)
+    @tag_list = value.to_s
+    @tag_list_assigned = true
+  end
+
   def tag!(name)
     tags << Tag.find_or_create_by_name!(name) unless tagged_with?(name)
   end
@@ -57,6 +73,17 @@ class Entry < ApplicationRecord
   end
 
   private
+    def sync_tag_list
+      names = @tag_list.split(",").map { |name| Tag.normalize(name) }.reject(&:blank?).uniq
+
+      keep = names.map { |name| Tag.find_or_create_by_name!(name) }
+      taggings.where.not(tag_id: keep.map(&:id)).destroy_all
+      (keep - tags.reload).each { |tag| tags << tag }
+
+      @tag_list_assigned = false
+      tags.reset
+    end
+
     def assign_body_digest
       self.body_digest = self.class.digest_for(body)
     end

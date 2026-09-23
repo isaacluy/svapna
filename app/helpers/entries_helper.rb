@@ -13,4 +13,7 @@ module EntriesHelper
     marker = tag.name == Import::IMPORTANT_TAG
     content_tag :span, tag.name, class: "tag #{'tag-marker' if marker}"
   end
+
+  # Entries ordered for display, with their tags preloaded.
+  def sorted_tags(entry) = entry.tags.sort_by(&:name)
 end

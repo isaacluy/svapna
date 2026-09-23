@@ -2,7 +2,7 @@
 
 Private, password-protected journal. Entries are imported from Apple Notes, then searched, tagged, and analysed (word frequency etc.). Long-term the app should replace Apple Notes as the place entries get written.
 
-**Status:** M5 complete — scaffolding, Docker, auth, the `Entry` model, the Apple Notes importer, the design system, and search. See the milestone table at the bottom.
+**Status:** M6 complete — scaffolding, Docker, auth, the `Entry` model, the Apple Notes importer, the design system, search, and tags. See the milestone table at the bottom.
 
 ## Stack
 
@@ -70,7 +70,9 @@ Config is environment variables only (`DATABASE_URL` in prod, `SECRET_KEY_BASE`,
   - Dedupe index on `(written_on, body_digest)` is **partial: `WHERE import_id IS NOT NULL`**. Idempotency is for imports; without the partial clause two new empty drafts on the same day collide
   - `body_digest` is set in a **`before_save`**, not `before_validation`, so a bulk import writing with `validate: false` still satisfies the NOT NULL constraint
   - `import_id` exists but has no foreign key and no association yet — M3 adds the `imports` table, the FK, and `belongs_to :import`
-- `Tag` + `Tagging`: many-to-many, names stored downcased so a plain unique index suffices (no `citext`). **No `Category` model** — tags do that job. `important` is an ordinary tag. Built in M3 because the importer must tag; M6 adds the browsing UI
+- `Tag` + `Tagging`: many-to-many, names stored downcased so a plain unique index suffices (no `citext`). **No `Category` model** — tags do that job. `important` is an ordinary tag
+  - Edited through `Entry#tag_list`, a comma-separated virtual attribute applied in an **`after_save`** (a new entry needs an id before taggings can attach). Assigning it replaces the whole set; leaving it out of an update touches nothing
+  - **A tag outlives its last entry on purpose** — undoing an import keeps the vocabulary for reuse. Anything user-facing uses `Tag.in_use`, and `bin/d r tags:prune` clears the rest
 - `Import`: one row per import run, so entries can be traced and undone. The skipped-section column is **`parse_errors`, not `errors`** — `errors` collides with `ActiveModel::Errors` and raises `DangerousAttributeError`. Undo is `dependent: :destroy`, which also clears taggings; the tag vocabulary survives
 - `User` + `Session`: from the Rails generator
 
@@ -137,6 +139,15 @@ bin/d r import:undo IMPORT=3
 
 **Highlighting escapes before it marks.** `ts_headline` runs **only over the current page** — the Postgres docs warn it re-parses the whole document and is slow — and is asked for private-use codepoint delimiters (`HIGHLIGHT_OPEN`/`CLOSE`), not `<mark>`. `SearchHelper#highlighted` HTML-escapes the snippet and *then* converts those markers to tags. Asking Postgres for literal `<mark>` would force sanitising instead, and Rails' `sanitize` strips a disallowed tag while keeping its text — so `<script>alert(1)</script>` in an entry would render as a bare `alert(1)`. (Postgres' parser happens to drop HTML tags from headlines anyway, so a full-stack test cannot prove the escaping; `SearchHelperTest` does it directly.)
 
+## Suggestions ("did you mean?")
+
+`Vocabulary.similar_to` trigram-matches a misspelled query against the words actually written, drawn from `ts_stat` over `word_vector` — unstemmed and accented, so a suggestion reads as `sueños`, not `sueñ` or `suenos`.
+
+- **Computed on demand, not stored.** It is only reached when a search returns zero results, which is rare. A lexicon table would add staleness and a refresh step to forget; materialise it if the corpus ever grows enough to drag
+- Only offered for a **single-word query**. Correcting one word of a phrase means guessing which word was wrong, and a wrong guess is worse than none
+- Accent and stemming differences never get this far — search already handles them — so anything reaching here is a real misspelling
+- Threshold is 0.35, a little above Postgres' 0.3 default, which keeps the suggestions from being noise
+
 ## Text analytics
 
 `Analytics::WordFrequency.call(scope:, stopwords:, limit:)` → one code path via `ts_stat` over `word_vector`, so "these 5 entries" and "all entries" always agree.
@@ -188,8 +199,8 @@ Build **one milestone at a time**, then stop for review.
 | M3 | Importer: parser, committer, `Import` + undo, rake task + UI | **done** |
 | M4 | Design system + reading UI | **done** |
 | M5 | Search: query object, filters, `ts_headline`, results UI | **done** |
-| M6 | Tags: browsing, filtering by tag, "did you mean?" | next |
-| M7 | Insights: word frequency, stopwords | |
+| M6 | Tags: browsing, filtering by tag, "did you mean?" | **done** |
+| M7 | Insights: word frequency, stopwords | next |
 | M8 | Composer: authoring, autosave, drafts | |
 | M9 | Deploy to Coolify (can be pulled forward any time) | |
 | M10 | Hotwire Native shell | |

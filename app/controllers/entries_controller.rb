@@ -45,7 +45,7 @@ class EntriesController < ApplicationController
     end
 
     def entry_params
-      params.expect(entry: %i[body written_on position language status source])
+      params.expect(entry: %i[body written_on position language status source tag_list])
     end
 
     def search_params

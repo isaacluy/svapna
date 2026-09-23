@@ -2,6 +2,7 @@ Rails.application.routes.draw do
   root "home#index"
 
   resources :entries
+  resources :tags, only: %i[index], param: :name
   resources :imports, only: %i[index show new create destroy]
 
   resource :session

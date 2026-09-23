@@ -27,6 +27,16 @@
     <div class="card mt-8 px-6 py-12 text-center">
       <% if @search.any_criteria? %>
         <p class="font-serif text-lg">No entries match.</p>
+
+        <% if @search.suggestions.any? %>
+          <p class="mt-3 text-sm">
+            Did you mean
+            <%= safe_join(@search.suggestions.map { |word|
+                  link_to word, search_path_with(@search, q: word), class: "link font-medium"
+                }, " or ") %>?
+          </p>
+        <% end %>
+
         <p class="mt-2 text-sm text-ink-muted">
           Try fewer words, or <%= link_to "clear the filters", entries_path, class: "link" %>.
           Quotes search a phrase, <code class="text-xs">or</code> widens, and a leading
