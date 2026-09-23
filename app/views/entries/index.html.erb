@@ -7,7 +7,7 @@
     <div class="flex items-center gap-4 text-sm">
       <%= link_to "Insights", insights_path(request.query_parameters.except("page")), class: "link" %>
       <%= link_to "Import", new_import_path, class: "link" %>
-      <%= link_to "New entry", new_entry_path, class: "btn btn-primary" %>
+      <%= link_to "Write", new_entry_path, class: "btn btn-primary" %>
     </div>
   </div>
 
@@ -19,8 +19,7 @@
       · <%= link_to "Clear", entries_path, class: "link" %>
     <% end %>
     <% if @search.hidden_draft_count.positive? %>
-      · <%= pluralize(@search.hidden_draft_count, "draft") %> hidden
-      · <%= link_to "show", search_path_with(@search, status: "all"), class: "link" %>
+      · <%= link_to pluralize(@search.hidden_draft_count, "draft") + " hidden", drafts_entries_path, class: "link" %>
     <% end %>
   </p>
 
